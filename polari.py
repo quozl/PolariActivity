@@ -18,15 +18,9 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import time
-import thread
 from gettext import gettext as _
-import globals as G
 
 from gi.repository import Gtk
-from gi.repository import Gdk
-from gi.repository import GObject
 
 from sugar3.activity import activity
 from sugar3.graphics.toolbutton import ToolButton
@@ -49,7 +43,6 @@ class PolariActivity(activity.Activity):
         self.rooms = {}
         self.actual_room = None
 
-        vbox = Gtk.VBox()
         self._canvas = Gtk.HBox()
         self._channels_view = ChannelsView()
 
@@ -71,7 +64,7 @@ class PolariActivity(activity.Activity):
 
         _dict = {}
 
-        for room, vlues in self.rooms.items():
+        for room, values in self.rooms.items():
             if room != host + '@' + channel:
                 _dict[room] = values
 
@@ -98,12 +91,11 @@ class PolariActivity(activity.Activity):
         toolbar = toolbar_box.toolbar
         activity_button = ToolButton()
         button_add = ToolButton(Gtk.STOCK_ADD)
-        entry_item = Gtk.ToolItem()
         self.entry_nick = Gtk.Entry()
         stop_button = ToolButton('activity-stop')
 
         activity_button.set_icon_widget(ActivityIcon(None))
-        button_add.set_tooltip('Add channel')
+        button_add.set_tooltip(_('Add channel'))
         stop_button.connect('clicked', self._exit)
         stop_button.props.accelerator = '<Ctrl>Q'
 
@@ -147,17 +139,17 @@ class PolariActivity(activity.Activity):
 
     def create_new_room(self, host, channel, nick, port):
         room = {}
-        room['host']            = host
-        room['channel']         = channel
-        room['nickname']        = nick
-        room['port']            = port
-        room['chat-view']       = ChatView()
-        room['max-characters']  = self.max_characters
-        room['entry-speak']     = room['chat-view'].entry
-        room['entry-nick']      = room['chat-view'].nicker
-        room['client']          = Client(room)
-        room['client'].entry    = room['entry-speak']
-        room['client'].nicker   = room['entry-nick']
+        room['host'] = host
+        room['channel'] = channel
+        room['nickname'] = nick
+        room['port'] = port
+        room['chat-view'] = ChatView()
+        room['max-characters'] = self.max_characters
+        room['entry-speak'] = room['chat-view'].entry
+        room['entry-nick'] = room['chat-view'].nicker
+        room['client'] = Client(room)
+        room['client'].entry = room['entry-speak']
+        room['client'].nicker = room['entry-nick']
 
         room['chat-view'].connect('nickname-changed', self.set_nickname, room)
         room['entry-speak'].connect('activate', self.send_message, room)

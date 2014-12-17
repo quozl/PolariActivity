@@ -18,9 +18,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import time
-import thread
-
 from gettext import gettext as _
 
 from gi.repository import Gtk
@@ -74,7 +71,7 @@ class ChannelItem(Gtk.EventBox):
         return self.label.get_label()
 
     def update(self):
-        if self.selected:        
+        if self.selected:
             self.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse('#4A90D9'))
 
         else:
@@ -84,7 +81,8 @@ class ChannelItem(Gtk.EventBox):
         self.last_widget.stop()
         self.hbox.remove(self.last_widget)
 
-        button = Gtk.Button.new_from_icon_name(Gtk.STOCK_REMOVE, Gtk.IconSize.BUTTON)
+        button = Gtk.Button.new_from_icon_name(
+            Gtk.STOCK_REMOVE, Gtk.IconSize.BUTTON)
         button.connect('clicked', lambda w: self.emit('removed'))
         self.hbox.pack_end(button, False, False, 0)
         self.show_all()
@@ -132,15 +130,16 @@ class ChannelsView(Gtk.ScrolledWindow):
 
     def remove_item(self, item):
         host = item.host
+        channel = item.channel
 
         self.items.remove(item)
-        self.sections[item.host].remove(item)
+        self.sections[host].remove(item)
 
-        if not self.sections[item.host].get_children():
-            self.vbox.remove(self.sections[item.host])
-            self.sections[item.host] = None
+        if not self.sections[host].get_children():
+            self.vbox.remove(self.sections[host])
+            self.sections[host] = None
 
-        self.emit('channel-removed', item.host, item.channel)
+        self.emit('channel-removed', host, channel)
         item.destroy()
 
     def select_item(self, item):
@@ -195,7 +194,7 @@ class ChatView(Gtk.VBox):
         if not self.entry.get_sensitive():
             self.nicker.set_sensitive(False)
 
-        if not '-' in user and not ' ' in user:
+        if '-' not in user and ' ' not in user:
             self.user = user
             self.nicker.set_placeholder_text(self.user)
 
@@ -203,7 +202,8 @@ class ChatView(Gtk.VBox):
                 self.emit('nickname-changed', self.user)
 
         else:
-            self.add_system_message(self.client, user + _(' is not a valid nickname.'))
+            self.add_system_message(
+                self.client, user + _(' is not a valid nickname.'))
 
         self.nicker.set_text('')
 
@@ -266,9 +266,12 @@ class ChatView(Gtk.VBox):
 
     def create_tags(self):
         self.tag_nick = self.buffer.create_tag('nick', foreground='#4A90D9')
-        self.tag_message = self.buffer.create_tag('message', background='#FFFFFF')
-        self.tag_system_msg = self.buffer.create_tag('sys-msg', foreground='#AAAAAA')
-        self.tag_url = self.buffer.create_tag('url', underline=Pango.Underline.SINGLE)
+        self.tag_message = self.buffer.create_tag(
+            'message', background='#FFFFFF')
+        self.tag_system_msg = self.buffer.create_tag(
+            'sys-msg', foreground='#AAAAAA')
+        self.tag_url = self.buffer.create_tag(
+            'url', underline=Pango.Underline.SINGLE)
 
 
 class AddChannelDialog(Gtk.Dialog):
@@ -293,17 +296,17 @@ class AddChannelDialog(Gtk.Dialog):
         self.button_cancel = Gtk.Button.new_from_stock(Gtk.STOCK_CANCEL)
         self.button_ok = Gtk.Button.new_from_stock(Gtk.STOCK_OK)
 
-        #self.set_modal(True)
         self.entry_host.set_text(host if bool(host) else '')
         self.entry_host.set_placeholder_text('irc.freenode.org')
         self.entry_channel.set_text(channel if bool(channel) else '')
         self.entry_channel.set_placeholder_text('sugar')
         self.entry_nick.set_text(nick if bool(nick) else '')
         self.entry_nick.set_placeholder_text('Nick')
-        self.entry_port.set_text(str(port) if port != None else '0000')
+        self.entry_port.set_text(str(port) if port is not None else '0000')
         self.entry_port.set_placeholder_text('0000')
 
-        self.modify_bg(Gtk.StateType.NORMAL, style.COLOR_PANEL_GREY.get_gdk_color())
+        self.modify_bg(Gtk.StateType.NORMAL,
+                       style.COLOR_PANEL_GREY.get_gdk_color())
         self.grid.set_border_width(20)
         self.entry_port.set_max_length(4)
 
@@ -333,7 +336,10 @@ class AddChannelDialog(Gtk.Dialog):
         self.show_all()
 
     def _text_changed(self, *args):
-        active = bool(self.entry_host.get_text()) and bool(self.entry_channel.get_text()) and bool(self.entry_nick.get_text()) and bool(self.entry_port.get_text())
+        active = bool(self.entry_host.get_text()) and \
+            bool(self.entry_channel.get_text()) and \
+            bool(self.entry_nick.get_text()) and \
+            bool(self.entry_port.get_text())
 
         try:
             int(self.entry_port.get_text())
@@ -341,7 +347,9 @@ class AddChannelDialog(Gtk.Dialog):
         except ValueError:
             active = False
 
-        if self.entry_channel.get_text().startswith('#') and len(self.entry_channel.get_text()) == 1:
+        if self.entry_channel.get_text().startswith('#') and \
+           len(self.entry_channel.get_text()) == 1:
+
             active = False
 
         self.button_ok.set_sensitive(active)
@@ -349,7 +357,7 @@ class AddChannelDialog(Gtk.Dialog):
     def ok(self, widget):
         host = self.entry_host.get_text()
         host = host[1:] if host.startswith('#') else host
-        channel = self.entry_channel.get_text() 
+        channel = self.entry_channel.get_text()
         nick = self.entry_nick.get_text()
         port = int(self.entry_port.get_text())
         self.emit('new-channel', host, channel, nick, port)
