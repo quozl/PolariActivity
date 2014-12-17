@@ -1,78 +1,90 @@
+from gettext import gettext as _
+
 from gi.repository import GObject
 
 import socket
 import thread
 
-
 class Client(GObject.GObject):
 
     __gsignals__ = {
-        'connected': (GObject.SIGNAL_RUN_FIRST, None, [bool]),
         'new-user-message': (GObject.SIGNAL_RUN_FIRST, None, [object]),
         'system-message': (GObject.SIGNAL_RUN_FIRST, None, [object]),
+        'connected': (GObject.SIGNAL_RUN_FIRST, None, []),
         }
 
-    def __init__(self):
-        
+    def __init__(self, data):
         GObject.GObject.__init__(self)
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connected = False
-        self.nickname = 'WitoutNick'
-        self.channels = []
-        self.host = 'irc.freenode.org'
-        self.port = 6667
-        self.max_characters = 4096
- 
-    def set_channels(self, channels):
-        self.channels = channels
- 
-    def add_channel(self, channel):
-        self.channels.append(channel)
- 
-    def remove_channel(self, channel):
-        if channel in self.channels:
-            self.channels.remove(channel)
- 
-    def set_nickname(self, nickname):
-        self.nickname = nickname
+        self.active = True
+        self.last_nickname = None
 
-    def set_host(self, host):
-        self.host = host
+        self.socket = socket.socket()
+        self.set_data(data)
 
-    def set_port(self, port):
-        self.port = port
+    def set_data(self, data):
+        self.nickname = data['nickname']
+        self.channel = data['channel']
+        self.port = data['port']
+        self.host = data['host']
+        self.max_characters = data['max-characters']
 
-    def set_max_characters(self, max_characters):
-        self.max_characters = max_characters
+        if not self.channel.startswith('#'):
+            self.channel = '#' + self.channel
 
-    def login(self):
         self.socket.connect((self.host, self.port))
-        self.send('NICK %s\r\n' % self.nickname)
-        self.send('USER %(nick)s %(nick)s %(nick)s :%(nick)s' % {'nick':self.nickname})
- 
+
+        if not self.connected:
+            self.start()
+
+    def set_nickname(self, nickname):
+        self.last_nickname = self.nickname
+        self.nickname = nickname
+        self.send('NICK %s' % self.nickname)
+        self.send('USER %(nick)s %(nick)s %(nick)s :%(nick)s' % {'nick': self.nickname})
+
     def start(self):
         thread.start_new_thread(self.__start, ())
 
-    def __start(self):
-        while True:
+    def check_sys_msg(self, *args):
+        if self.system_messages:
+            for x in self.system_messages:
+                self.emit('system-message', x)
+
+        self.system_messages = []
+
+    def __start(self, *args):
+        print '\n\n'
+
+        self.set_nickname(self.nickname)
+        """
+        self.send('NICK %s' % self.nickname)
+        self.send('USER %(nick)s %(nick)s %(nick)s :%(nick)s' % {'nick':self.nickname})
+        """
+
+        self.system_messages = []
+        GObject.timeout_add_seconds(1, self.check_sys_msg, ())
+
+        while self.active:
             buf = self.socket.recv(self.max_characters)
             lines = buf.split('\n')
-
             for data in lines:
                 data = str(data).strip()
 
                 if data == '':
                     continue
 
+                print data
+
                 if data.find('PING') != -1:
                     n = data.split(':')[1]
                     self.send('PONG :' + n)
-
                     if self.connected == False:
                         self.perform()
+                        self.connected = True
 
-                if len(data.split(' ')) >= 4:
+                if len(data.split(' ')) == 4:
                     args = data.split(' ')
                     if args[0].startswith(':') and '!' in args[0] and 'ip' in args[0]:
                         system_message = False
@@ -97,24 +109,46 @@ class Client(GObject.GObject):
                     system_message = True
 
                 if system_message:
-                    self.emit('system-message', data)
+                    message = ''
+                    channel = ''
+
+                    if data.startswith(':') and len(data.split(' ')) == 3 and 'JOIN' in data.split(' '):
+                        # Any joined to the channel
+                        sender = data[1:].split('!')[0]
+                        channel = data.split(' ')[-1]
+                        message = sender + ' joined to ' + channel
+
+                    if data.startswith(':') and len(data.split(' ')) == 9 and ':Nickname is already in use.' in data and self.nickname in data:
+                        # New nickname in use
+                        print 'NAME', self.last_nickname, self.nickname, self.channel, self.host
+                        message = self.nickname + ' is already in use.'
+                        self.nickname = self.last_nickname
+
+                    if data.startswith(':') and len(data.split(' ')) == 3 and 'NICK' in data.split(' '):
+                        # Any has changed nick
+                        last_nick = data[1:].split('!')[0]
+                        new_nick = data.split(' ')[-1][1:]
+                        message = last_nick + ' has changed nick to ' + new_nick
+
+                    if message:
+                        if message == self.nickname + ' joined to ' + channel:
+                            self.emit('connected')
+
+                        self.emit('system-message', message)
 
     def send(self, msg):
+        # Any message
         self.socket.send(msg + '\r\n')
- 
-    def say(self, msg, channel=None):
-        if not channel:
-            channel = self.channels[0]
 
-        if self.connected:
-            self.send('PRIVMSG %s :%s' % (channel, msg))
- 
+    def say(self, msg):
+        # Speak with others members of the channel
+        self.send('PRIVMSG %s :%s' % (self.channel, msg))
+
     def perform(self):
         self.send('PRIVMSG R : Login <>')
         self.send('MODE %s +x' % self.nickname)
-        for c in self.channels:
-            self.send('JOIN %s' % c)
-        
-        self.connected = True
-        self.emit('connected', True)
- 
+        self.send('JOIN %s' % self.channel)
+
+    def close(self):
+        self.active = False
+        self.socket.close()
