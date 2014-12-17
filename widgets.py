@@ -299,7 +299,7 @@ class AddChannelDialog(Gtk.Dialog):
         self.entry_host.set_text(host if bool(host) else 'irc.freenode.org')
         self.entry_channel.set_text(channel if bool(channel) else 'sugar')
         self.entry_nick.set_text(nick if bool(nick) else 'Nick')
-        self.entry_port.set_text(str(port) if port is not None else '6667')
+        self.entry_port.set_text(str(port) if port is not None else '8000')
 
         self.modify_bg(Gtk.StateType.NORMAL,
                        style.COLOR_PANEL_GREY.get_gdk_color())
