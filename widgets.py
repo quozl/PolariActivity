@@ -296,14 +296,10 @@ class AddChannelDialog(Gtk.Dialog):
         self.button_cancel = Gtk.Button.new_from_stock(Gtk.STOCK_CANCEL)
         self.button_ok = Gtk.Button.new_from_stock(Gtk.STOCK_OK)
 
-        self.entry_host.set_text(host if bool(host) else '')
-        self.entry_host.set_placeholder_text('irc.freenode.org')
-        self.entry_channel.set_text(channel if bool(channel) else '')
-        self.entry_channel.set_placeholder_text('sugar')
-        self.entry_nick.set_text(nick if bool(nick) else '')
-        self.entry_nick.set_placeholder_text('Nick')
-        self.entry_port.set_text(str(port) if port is not None else '0000')
-        self.entry_port.set_placeholder_text('0000')
+        self.entry_host.set_text(host if bool(host) else 'irc.freenode.org')
+        self.entry_channel.set_text(channel if bool(channel) else 'sugar')
+        self.entry_nick.set_text(nick if bool(nick) else 'Nick')
+        self.entry_port.set_text(str(port) if port is not None else '6667')
 
         self.modify_bg(Gtk.StateType.NORMAL,
                        style.COLOR_PANEL_GREY.get_gdk_color())
