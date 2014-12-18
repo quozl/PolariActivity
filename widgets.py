@@ -274,89 +274,136 @@ class ChatView(Gtk.VBox):
             'url', underline=Pango.Underline.SINGLE)
 
 
-class AddChannelDialog(Gtk.Dialog):
+class Field(Gtk.HBox):
+
+    def __init__(self, label, prepopulate):
+        Gtk.HBox.__init__(self)
+
+        lb = Gtk.Label()
+        lb.set_markup(
+            "<span size='large' foreground='%s'>%s</span>" % (
+                style.COLOR_BUTTON_GREY.get_html(),
+                label))
+
+        self.pack_start(lb, True, False, 0)
+
+        self.entry = Gtk.Entry()
+        self.entry.set_text(prepopulate)
+        self.pack_end(self.entry, True, True, 0)
+        
+        self.show_all()
+
+    def get_value(self):
+        return self.entry.get_text()
+
+
+class AddChannelBox(Gtk.EventBox):
 
     __gsignals__ = {
         'new-channel': (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, int]),
+        'cancel': (GObject.SIGNAL_RUN_FIRST, None, []),
         }
 
-    def __init__(self, host=None, channel=None, nick=None, port=None):
-        Gtk.Dialog.__init__(self)
+    def __init__(self, nick=None, host=None, port=None, channel=None):
+        Gtk.EventBox.__init__(self)
 
-        self.grid = Gtk.Grid()
-        self.entry_host = Gtk.Entry()
-        self.entry_channel = Gtk.Entry()
-        self.entry_nick = Gtk.Entry()
-        self.entry_port = Gtk.Entry()
-        label1 = Gtk.Label(_('Connection:'))
-        label2 = Gtk.Label(_('Channel:'))
-        label3 = Gtk.Label(_('Nickname:'))
-        label4 = Gtk.Label(_('Port:'))
-        self.button_box = self.vbox.get_children()[0]
-        self.button_cancel = Gtk.Button.new_from_stock(Gtk.STOCK_CANCEL)
-        self.button_ok = Gtk.Button.new_from_stock(Gtk.STOCK_OK)
-
-        self.entry_host.set_text(host if bool(host) else 'irc.freenode.org')
-        self.entry_channel.set_text(channel if bool(channel) else 'sugar')
-        self.entry_nick.set_text(nick if bool(nick) else 'Nick')
-        self.entry_port.set_text(str(port) if port is not None else '8000')
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        boxi = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        form = Gtk.VBox()
 
         self.modify_bg(Gtk.StateType.NORMAL,
-                       style.COLOR_PANEL_GREY.get_gdk_color())
-        self.grid.set_border_width(20)
-        self.entry_port.set_max_length(4)
+                       style.COLOR_WHITE.get_gdk_color())
 
-        for label in [label1, label2, label3, label4]:
-            label.modify_fg(Gtk.StateType.NORMAL, Gdk.Color(0, 0, 0))
+        self.nick = Field("Nick", "Nickname" or nick)
+        form.pack_start(self.nick, False, False, 5)
 
-        self.entry_host.connect('changed', self._text_changed)
-        self.entry_channel.connect('changed', self._text_changed)
-        self.entry_port.connect('changed', self._text_changed)
-        self.button_cancel.connect('clicked', self._close)
-        self.button_ok.connect('clicked', self.ok)
-        self.button_ok.connect('clicked', self._close)
+        self.server = Field("Server", "irc.freenode.net")
+        form.pack_start(self.server, False, False, 5)
 
-        self.grid.attach(label1,             1, 1, 1, 1)
-        self.grid.attach(self.entry_host,    2, 1, 1, 1)
-        self.grid.attach(label2,             1, 2, 1, 1)
-        self.grid.attach(self.entry_channel, 2, 2, 1, 1)
-        self.grid.attach(label3,             1, 3, 1, 1)
-        self.grid.attach(self.entry_nick,    2, 3, 1, 1)
-        self.grid.attach(label4,             1, 4, 1, 1)
-        self.grid.attach(self.entry_port,    2, 4, 1, 1)
-        self.button_box.add(self.button_cancel)
-        self.button_box.add(self.button_ok)
+        self.port = Field("Port", "8000" or port)
+        form.pack_start(self.port, False, False, 5)
 
-        self._text_changed()
-        self.vbox.add(self.grid)
+        self.channels = Field("Channel", "#sugar" or port)
+        form.pack_start(self.channels, False, False, 5)
+
+        self.enter = Gtk.Button(label="Connect!")
+        self.enter.connect("clicked", self.__connect_clicked)
+        form.add(self.enter)
+
+        self.cancel = Gtk.Button(label='Cancel')
+        self.cancel.connect('clicked', self.__cancel)
+        form.add(self.cancel)
+
+        boxi.pack_start(form, True, False, 0)
+        box.pack_start(boxi, True, False, 0)
+        self.add(box)
         self.show_all()
 
-    def _text_changed(self, *args):
-        active = bool(self.entry_host.get_text()) and \
-            bool(self.entry_channel.get_text()) and \
-            bool(self.entry_nick.get_text()) and \
-            bool(self.entry_port.get_text())
+    def __cancel(self, widget):
+        self.emit('cancel')
+
+    def __text_changed(self, *args):
+        sensitive = bool(self.nick.get_text()) and \
+                bool(self.server.get_text()) and \
+                bool(self.channels.get_text()) and \
+                bool(self.port.get_text())
 
         try:
-            int(self.entry_port.get_text())
+            int(self.port.get_text())
 
         except ValueError:
-            active = False
+            sensitive = False
 
-        if self.entry_channel.get_text().startswith('#') and \
-           len(self.entry_channel.get_text()) == 1:
+        self.enter.set_sensitive(sensitive)
 
-            active = False
+    def __connect_clicked(self, button):
+        data = {
+            "nick": self.nick.get_value(),
+            "server": self.server.get_value(),
+            "channels": self.channels.get_value(),
+            "port": int(self.port.get_value())
+        }
+        self.emit("new-channel",
+                  data["nick"],
+                  data["server"],
+                  data["channels"],
+                  data["port"])
 
-        self.button_ok.set_sensitive(active)
 
-    def ok(self, widget):
-        host = self.entry_host.get_text()
-        host = host[1:] if host.startswith('#') else host
-        channel = self.entry_channel.get_text()
-        nick = self.entry_nick.get_text()
-        port = int(self.entry_port.get_text())
-        self.emit('new-channel', host, channel, nick, port)
+class Canvas(Gtk.HBox):
 
-    def _close(self, *args):
-        self.destroy()
+    def __init__(self):
+        Gtk.HBox.__init__(self)
+
+        self.channels_box = ChannelsView()
+        self.chat_box = Gtk.VBox()
+        self.chat_view = None
+
+        self.set_originals_boxes()
+
+    def set_chat_view(self, chat_view):
+        if self.chat_box.get_children():
+            self.chat_box.remove(self.chat_view)
+
+        self.chat_view = chat_view
+        self.chat_box.pack_start(self.chat_view, True, True, 0)
+        self.show_all()
+
+    def set_canvas(self, canvas, expand=True, fill=True, padding=0):
+        for child in self.get_children():
+            self.remove(child)
+
+        self.pack_start(canvas, expand, fill, padding)
+        self.show_all()
+
+    def set_originals_boxes(self, *args):
+        for child in self.get_children():
+            self.remove(child)
+
+        self.pack_start(self.channels_box, False, False, 1)
+        self.pack_start(self.chat_box, True, True, 0)
+
+        self.show_all()
+
+
+

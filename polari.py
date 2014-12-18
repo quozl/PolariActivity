@@ -27,9 +27,10 @@ from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.activity.widgets import _create_activity_icon as ActivityIcon
 
-from widgets import AddChannelDialog
+from widgets import AddChannelBox
 from widgets import ChannelsView
 from widgets import ChatView
+from widgets import Canvas
 
 from irc.client import Client
 
@@ -43,8 +44,8 @@ class PolariActivity(activity.Activity):
         self.rooms = {}
         self.actual_room = None
 
-        self._canvas = Gtk.HBox()
-        self._channels_view = ChannelsView()
+        self._canvas = Canvas()
+        self._channels_view = self._canvas.channels_box
 
         self.set_size_request(500, 300)
         self.make_toolbar()
@@ -55,6 +56,8 @@ class PolariActivity(activity.Activity):
 
         self.set_canvas(self._canvas)
         self.show_all()
+
+        self.add_channel()
 
     def remove_channel(self, widget, host, channel):
         room = self.rooms[host + '@' + channel]
@@ -115,29 +118,35 @@ class PolariActivity(activity.Activity):
         else:
             room['client'].nickname = nickname
 
-    def add_channel(self, widget):
+    def add_channel(self, widget=None):
         if not self.actual_room:
+            nick = None
             host = None
             channel = None
-            nick = None
             port = None
 
         else:
+            nick = self.rooms[self.actual_room]['nickname']
             host = self.rooms[self.actual_room]['host']
             channel = self.rooms[self.actual_room]['channel']
-            nick = self.rooms[self.actual_room]['nickname']
             port = self.rooms[self.actual_room]['port']
 
-        dialog = AddChannelDialog(host, channel, nick, port)
-        dialog.set_parent(self)
-        dialog.connect('new-channel', self.new_channel)
-        dialog.show_all()
+        box = AddChannelBox(nick, host, channel, port)
 
-    def new_channel(self, widget, host, channel, nick, port):
-        self.actual_room = self.create_new_room(host, channel, nick, port)
-        self._channels_view.add_channel(channel, host)
+        box.connect('new-channel', self.new_channel)
+        box.connect('new-channel', self._canvas.set_originals_boxes)
+        box.connect('cancel', self._canvas.set_originals_boxes)
+
+        self._canvas.set_canvas(box)
+        self.show_all()
+
+    def new_channel(self, widget, nick, host, channel, port):
+        self.create_new_room(host, channel, nick, port)
 
     def create_new_room(self, host, channel, nick, port):
+        if channel.startswith('#'):
+            channel = channel[1:]
+
         room = {}
         room['host'] = host
         room['channel'] = channel
@@ -151,6 +160,9 @@ class PolariActivity(activity.Activity):
         room['client'].entry = room['entry-speak']
         room['client'].nicker = room['entry-nick']
 
+        self.actual_room = host + '@' + channel
+        self.rooms[self.actual_room] = room
+
         room['chat-view'].connect('nickname-changed', self.set_nickname, room)
         room['entry-speak'].connect('activate', self.send_message, room)
         room['client'].connect('connected', self.client_connected)
@@ -160,10 +172,7 @@ class PolariActivity(activity.Activity):
         room['chat-view'].set_client(room['client'])
         self.set_chat_view(room['chat-view'])
 
-        actual_room = host + '@' + channel
-        self.rooms[actual_room] = room
-
-        return actual_room
+        self._channels_view.add_channel(channel, host)
 
     def _stop_last_item_child(self, client, room):
         vbox = self._channels_view.sections[room['host']]
@@ -176,10 +185,7 @@ class PolariActivity(activity.Activity):
         client.nicker.set_sensitive(True)
 
     def set_chat_view(self, view):
-        if len(self._canvas.get_children()) > 1:
-            self._canvas.remove(self._canvas.get_children()[1])
-
-        self._canvas.pack_end(view, True, True, 0)
+        self._canvas.set_chat_view(view)
         self.show_all()
 
     def send_message(self, widget, room):

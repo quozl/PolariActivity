@@ -84,6 +84,8 @@ class Client(GObject.GObject):
                         self.perform()
                         self.connected = True
 
+                print data
+
                 if len(data.split(' ')) >= 4 and 'PRIVMSG' in data.split(' '):
                     print data
                     args = data.split(' ')
