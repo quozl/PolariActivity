@@ -18,6 +18,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+import re
 from gettext import gettext as _
 
 from gi.repository import Gtk
@@ -218,6 +219,10 @@ class ChatView(Gtk.VBox):
         self.client.say(message)
         widget.set_text('')
 
+    def add_text_with_tag(self, text, tag):
+        end = self.buffer.get_end_iter()
+        self.buffer.insert_with_tags_by_name(end, text, tag)
+
     def add_system_message(self, client, message):
         if message == self.user + _(' is already in use.'):
             if not self.nicker.get_sensitive():
@@ -227,15 +232,10 @@ class ChatView(Gtk.VBox):
                 self.set_user(self.client.last_nickname, False)
 
         self.last_user = '<SYSTEM>'
-
-        _iter = self.buffer.get_end_iter()
-        offset = _iter.get_offset()
-        self.buffer.insert(_iter, message + '\n', -1)
-
-        start = self.buffer.get_iter_at_offset(offset)
-        self.buffer.apply_tag(self.tag_system_msg, start, _iter)
+        self.add_text_with_tag(message + '\n', 'sys-msg')
 
     def add_message_to_view(self, user, message, force=False):
+        for_me = False
         if user != self.user or force:
             if user == self.last_user:
                 user = ' ' * (len(user) + 2)
@@ -244,34 +244,41 @@ class ChatView(Gtk.VBox):
                 self.last_user = user
                 user += ': '
 
-            _iter = self.buffer.get_end_iter()
-            offset = _iter.get_offset()
-            self.buffer.insert(_iter, user, -1)
+            if message.startswith(self.user):
+                for_me = True
+                message = message[len(self.user):]
 
-            start = self.buffer.get_iter_at_offset(offset)
-            self.buffer.apply_tag(self.tag_nick, start, _iter)
+            self.add_text_with_tag(user, 'nick')
+            if for_me:
+                self.add_text_with_tag(self.user, 'self')
 
-            _iter = self.buffer.get_end_iter()
-            offset = _iter.get_offset()
-            self.buffer.insert(_iter, ' %s\n' % message, -1)
+            urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message)
 
-            start = self.buffer.get_iter_at_offset(offset)
-            self.buffer.apply_tag(self.tag_message, start, _iter)
+            if not urls:
+                self.add_text_with_tag(message + '\n', 'message')
+
+            else:
+                n = 0
+                for url in urls:
+                    #FIXME: no funciona cuando hay más de un url igual
+                    self.add_text_with_tag(message.split(url)[0], 'message')
+                    self.add_text_with_tag(url, 'url')
+                    self.add_text_with_tag(message.split(url)[1], 'message')
+
+                self.add_text_with_tag('\n', 'message')
 
     def message_recived(self, client, _dict):
         self.add_message_to_view(_dict['sender'], _dict['message'])
 
+    def create_tags(self):
+        self.buffer.create_tag('nick', foreground='#4A90D9')
+        self.buffer.create_tag('self', foreground='#FF2020')
+        self.buffer.create_tag('message', background='#FFFFFF')
+        self.buffer.create_tag('sys-msg', foreground='#AAAAAA')
+        self.buffer.create_tag('url', underline=Pango.Underline.SINGLE, foreground='#0000FF')
+
     def get_entry(self):
         return self.entry
-
-    def create_tags(self):
-        self.tag_nick = self.buffer.create_tag('nick', foreground='#4A90D9')
-        self.tag_message = self.buffer.create_tag(
-            'message', background='#FFFFFF')
-        self.tag_system_msg = self.buffer.create_tag(
-            'sys-msg', foreground='#AAAAAA')
-        self.tag_url = self.buffer.create_tag(
-            'url', underline=Pango.Underline.SINGLE)
 
 
 class Field(Gtk.HBox):
@@ -314,20 +321,20 @@ class AddChannelBox(Gtk.EventBox):
         self.modify_bg(Gtk.StateType.NORMAL,
                        style.COLOR_WHITE.get_gdk_color())
 
-        self.nick = Field("Nick", "Nickname" or nick)
+        self.nick = Field('Nick', nick or 'Nickname')
         form.pack_start(self.nick, False, False, 5)
 
-        self.server = Field("Server", "irc.freenode.net")
+        self.server = Field('Server', 'irc.freenode.net')
         form.pack_start(self.server, False, False, 5)
 
-        self.port = Field("Port", "8000" or port)
+        self.port = Field('Port', port or '8000')
         form.pack_start(self.port, False, False, 5)
 
-        self.channels = Field("Channel", "#sugar" or port)
+        self.channels = Field('Channel', channel or '#sugar')
         form.pack_start(self.channels, False, False, 5)
 
-        self.enter = Gtk.Button(label="Connect!")
-        self.enter.connect("clicked", self.__connect_clicked)
+        self.enter = Gtk.Button(label='Connect!')
+        self.enter.connect('clicked', self.__connect_clicked)
         form.add(self.enter)
 
         self.cancel = Gtk.Button(label='Cancel')
@@ -358,16 +365,16 @@ class AddChannelBox(Gtk.EventBox):
 
     def __connect_clicked(self, button):
         data = {
-            "nick": self.nick.get_value(),
-            "server": self.server.get_value(),
-            "channels": self.channels.get_value(),
-            "port": int(self.port.get_value())
+            'nick': self.nick.get_value(),
+            'server': self.server.get_value(),
+            'channels': self.channels.get_value(),
+            'port': int(self.port.get_value())
         }
-        self.emit("new-channel",
-                  data["nick"],
-                  data["server"],
-                  data["channels"],
-                  data["port"])
+        self.emit('new-channel',
+                  data['nick'],
+                  data['server'],
+                  data['channels'],
+                  data['port'])
 
 
 class Canvas(Gtk.HBox):
@@ -404,6 +411,3 @@ class Canvas(Gtk.HBox):
         self.pack_start(self.chat_box, True, True, 0)
 
         self.show_all()
-
-
-
