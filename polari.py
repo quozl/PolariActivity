@@ -134,9 +134,9 @@ class PolariActivity(activity.Activity):
             port = self.rooms[self.actual_room]['port']
 
         else:
-            nick = 'TestingPolari'#None
+            nick = None
             host = None
-            channel = 'TestPolari'#None
+            channel = None
             port = None
 
         box = AddChannelBox(nick, host, channel, port, init)
