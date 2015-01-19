@@ -6,7 +6,7 @@
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
-# version 2 of the License, or (at your option) any later version.
+# version 3 of the License, or (at your option) any later version.
 #
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,7 +18,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import re
+import globals as G
 from gettext import gettext as _
 
 from gi.repository import Gtk
@@ -36,27 +36,33 @@ class ChannelItem(Gtk.EventBox):
         'removed': (GObject.SIGNAL_RUN_FIRST, None, []),
         }
 
-    def __init__(self, channel):
+    def __init__(self, name):
         Gtk.EventBox.__init__(self)
 
+        channel = name.split('@')[1]
+        nickname = channel.split(':')[1]
+        channel = channel.split(':')[0]
         channel = ('#' if not channel.startswith('#') else '') + channel
 
         self.selected = False
+        self.name = name
+        self.nickname = nickname
         self.hbox = Gtk.HBox()
         self.label = Gtk.Label(channel)
-        self.last_widget = Gtk.Spinner()
+        self.spinner = Gtk.Spinner()
 
         self.label.modify_font(Pango.FontDescription('15'))
         self.label.set_margin_left(10)
         self.set_size_request(-1, 30)
-        self.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse('#FFFFFF'))
-        self.last_widget.start()
+        self.modify_bg(Gtk.StateType.NORMAL, G.COLOR_WHITE)
 
         self.connect('button-press-event', self._press)
 
         self.hbox.pack_start(self.label, False, False, 0)
-        self.hbox.pack_end(self.last_widget, False, False, 0)
+        self.hbox.pack_end(self.spinner, False, False, 0)
         self.add(self.hbox)
+
+        self.spinner.start()
 
     def _press(self, widget, event):
         if event.button == 1:
@@ -73,14 +79,14 @@ class ChannelItem(Gtk.EventBox):
 
     def update(self):
         if self.selected:
-            self.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse('#4A90D9'))
+            self.modify_bg(Gtk.StateType.NORMAL, G.COLOR_BLUE)
 
         else:
-            self.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse('#FFFFFF'))
+            self.modify_bg(Gtk.StateType.NORMAL, G.COLOR_WHITE)
 
-    def stop_last_widget(self):
-        self.last_widget.stop()
-        self.hbox.remove(self.last_widget)
+    def stop_spinner(self):
+        self.spinner.stop()
+        self.hbox.remove(self.spinner)
 
         button = Gtk.Button.new_from_icon_name(
             Gtk.STOCK_REMOVE, Gtk.IconSize.BUTTON)
@@ -92,8 +98,8 @@ class ChannelItem(Gtk.EventBox):
 class ChannelsView(Gtk.ScrolledWindow):
 
     __gsignals__ = {
-        'channel-selected': (GObject.SIGNAL_RUN_FIRST, None, [str, str]),
-        'channel-removed': (GObject.SIGNAL_RUN_FIRST, None, [str, str]),
+        'channel-selected': (GObject.SIGNAL_RUN_FIRST, None, [str]),
+        'channel-removed': (GObject.SIGNAL_RUN_FIRST, None, [str]),
         }
 
     def __init__(self):
@@ -104,56 +110,72 @@ class ChannelsView(Gtk.ScrolledWindow):
         self.vbox = Gtk.VBox()
 
         self.set_size_request(250, -1)
-        self.modify_bg(Gtk.StateType.NORMAL, Gdk.color_parse('#FFFFFF'))
+        self.modify_bg(Gtk.StateType.NORMAL, G.COLOR_WHITE)
 
         self.add(self.vbox)
 
-    def add_channel(self, channel, host):
-        if not self.sections.get(host, False):
-            self.sections[host] = Gtk.VBox()
+    def add_channel(self, host, channel, nickname):
+        channel = channel[1:] if channel.startswith('#') else channel
+        section = host + '@' + channel
+        name = section + ':' + nickname
+
+        if not self.sections.get(section, False):
+            self.sections[section] = Gtk.VBox()
             label = Gtk.Label(host)
             label.host = None
 
-            self.sections[host].pack_start(label, False, False, 0)
-            self.vbox.pack_start(self.sections[host], False, False, 0)
+            self.sections[section].pack_start(label, False, False, 0)
+            self.vbox.pack_start(self.sections[section], False, False, 0)
 
-        item = ChannelItem(channel)
+        item = ChannelItem(name)
         item.host = host
         item.channel = channel
 
         item.connect('selected', self.select_item)
         item.connect('removed', self.remove_item)
-        self.sections[host].pack_start(item, False, False, 0)
+        self.sections[section].pack_start(item, False, False, 0)
 
         self.items.append(item)
         self.select_item(item)
         self.show_all()
 
     def remove_item(self, item):
-        host = item.host
-        channel = item.channel
-
+        section = item.name.split(':')[0]
+        idx = self.items.index(item)
         self.items.remove(item)
-        self.sections[host].remove(item)
+        self.sections[section].remove(item)
 
-        if not self.sections[host].get_children():
-            self.vbox.remove(self.sections[host])
-            self.sections[host] = None
+        if not self.sections[section].get_children():
+            self.vbox.remove(self.sections[section])
+            self.sections[section] = None
 
-        self.emit('channel-removed', host, channel)
+        self.emit('channel-removed', item.name)
         item.destroy()
+
+        if idx > 0:
+            idx -= 1
+
+        if self.items:
+            self.select_item(self.items[idx])
 
     def select_item(self, item):
         for i in self.items:
             i.set_selected(i == item)
 
-        self.emit('channel-selected', item.host, item.channel)
+        self.emit('channel-selected', item.name)
+
+    def select_item_from_string(self, name):
+        for item in self.items:
+            if item.name == name:
+                self.select_item(item)
+                break
 
 
 class ChatView(Gtk.VBox):
 
     __gsignals__ = {
         'nickname-changed': (GObject.SIGNAL_RUN_FIRST, None, [str]),
+        'stop-widget': (GObject.SIGNAL_RUN_FIRST, None, []),
         }
 
     def __init__(self):
@@ -218,6 +240,8 @@ class ChatView(Gtk.VBox):
         self.client.connect('new-user-message', self.message_recived)
         self.client.connect('system-message', self.add_system_message)
 
+        self.client.start()
+
     def send_message(self, widget):
         message = widget.get_text()
         self.add_message_to_view(self.user, message, force=True)
@@ -229,12 +253,15 @@ class ChatView(Gtk.VBox):
         self.buffer.insert_with_tags_by_name(end, text, tag)
 
     def add_system_message(self, client, message):
-        if message == self.user + _(' is already in use.'):
+        if message == self.user + G.NICKNAME_USED:
             if not self.nicker.get_sensitive():
                 self.nicker.set_sensitive(True)
 
             else:
                 self.set_user(self.client.last_nickname, False)
+
+        elif message == G.CONNECTION_ERROR:
+            self.emit('stop-widget')
 
         self.last_user = '<SYSTEM>'
         self.add_text_with_tag(message + '\n', 'sys-msg')
@@ -249,28 +276,29 @@ class ChatView(Gtk.VBox):
                 self.last_user = user
                 user += ': '
 
-            if message.startswith(self.user):
-                for_me = True
-                message = message[len(self.user):]
-
             self.add_text_with_tag(user, 'nick')
-            if for_me:
-                self.add_text_with_tag(self.user, 'self')
 
-            urls = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', message)
+            end = self.buffer.get_end_iter()
+            offset = end.get_offset()
 
-            if not urls:
-                self.add_text_with_tag(message + '\n', 'message')
+            self.add_text_with_tag(message + '\n', 'message')
+            end = self.buffer.get_iter_at_offset(offset)
+            self.search_and_mark(self.user, end, 'self')
 
-            else:
-                n = 0
-                for url in urls:
-                    #FIXME: no funciona cuando hay más de un url igual
-                    self.add_text_with_tag(message.split(url)[0], 'message')
-                    self.add_text_with_tag(url, 'url')
-                    self.add_text_with_tag(message.split(url)[1], 'message')
+            offset = end.get_offset()
 
-                self.add_text_with_tag('\n', 'message')
+            for url in G.get_urls(message):
+                end = self.buffer.get_iter_at_offset(offset)
+                self.search_and_mark(url, end, 'url')
+
+    def search_and_mark(self, text, start, tag):
+        end = self.buffer.get_end_iter()
+        match = start.forward_search(text, 0, end)
+
+        if match != None:
+            match_start, match_end = match
+            self.buffer.apply_tag_by_name(tag, match_start, match_end)
+            self.search_and_mark(text, match_end, tag)
 
     def message_recived(self, client, _dict):
         self.add_message_to_view(_dict['sender'], _dict['message'])
@@ -317,7 +345,7 @@ class Field(Gtk.HBox):
 
         self.entry = Gtk.Entry()
         self.entry.modify_font(Pango.FontDescription('30'))
-        self.entry.set_text(prepopulate)
+        self.entry.set_text(str(prepopulate))
         self.pack_end(self.entry, True, True, 0)
 
         self.show_all()
@@ -441,11 +469,11 @@ class Canvas(Gtk.HBox):
         self.chat_box.pack_start(self.chat_view, True, True, 0)
         self.show_all()
 
-    def set_canvas(self, canvas, expand=True, fill=True, padding=0):
+    def set_canvas(self, canvas):
         for child in self.get_children():
             self.remove(child)
 
-        self.pack_start(canvas, expand, fill, padding)
+        self.pack_start(canvas, True, True, 0)
         self.show_all()
 
     def set_originals_boxes(self, *args):

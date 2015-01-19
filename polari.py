@@ -6,7 +6,7 @@
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
 # License as published by the Free Software Foundation; either
-# version 2 of the License, or (at your option) any later version.
+# version 3 of the License, or (at your option) any later version.
 #
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,11 +18,13 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+import globals as G
 from gettext import gettext as _
 
 from gi.repository import Gtk
 
 from sugar3.activity import activity
+from sugar3.graphics.alert import TimeoutAlert
 from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
 from sugar3.activity.widgets import _create_activity_icon as ActivityIcon
@@ -32,7 +34,7 @@ from widgets import ChannelsView
 from widgets import ChatView
 from widgets import Canvas
 
-from irc.client import Client
+from client import Client
 
 
 class PolariActivity(activity.Activity):
@@ -44,38 +46,44 @@ class PolariActivity(activity.Activity):
         self.rooms = {}
         self.actual_room = None
 
-        self._canvas = Canvas()
-        self._channels_view = self._canvas.channels_box
+        self.vbox = Gtk.VBox()
+        self.viewer = Canvas()
+        self._channels_view = self.viewer.channels_box
 
         self.set_size_request(500, 300)
         self.make_toolbar()
 
         self._channels_view.connect('channel-selected', self.channel_changed)
         self._channels_view.connect('channel-removed', self.remove_channel)
-        self._canvas.pack_start(self._channels_view, False, False, 1)
+        self.viewer.pack_start(self._channels_view, False, False, 1)
 
-        self.set_canvas(self._canvas)
+        self.vbox.pack_end(self.viewer, True, True, 0)
+        self.set_canvas(self.vbox)
         self.show_all()
 
         self.add_channel(init=True)
 
-    def remove_channel(self, widget, host, channel):
-        room = self.rooms[host + '@' + channel]
+    def remove_channel(self, widget, name):
+        room = self.rooms[name]
         room['client'].close()
-        self._canvas.remove(room['chat-view'])
+        self.viewer.remove(room['chat-view'])
         room['chat-view'].destroy()
 
         _dict = {}
 
         for room, values in self.rooms.items():
-            if room != host + '@' + channel:
+            # Removing a key of the dictionaty
+            if room != name:
                 _dict[room] = values
 
         self.rooms = _dict
 
-    def channel_changed(self, widget, host, channel):
-        channel = channel[1:] if channel.startswith('#') else channel
-        self.actual_room = host + '@' + channel
+        if not self.rooms:
+            self.actual_room = None
+            self.add_channel(init=True)
+
+    def channel_changed(self, widget, name):
+        self.actual_room = name
         self.set_chat_view(self.rooms[self.actual_room]['chat-view'])
 
     def make_toolbar(self):
@@ -126,22 +134,43 @@ class PolariActivity(activity.Activity):
             port = self.rooms[self.actual_room]['port']
 
         else:
-            nick = None
+            nick = 'TestingPolari'#None
             host = None
-            channel = None
+            channel = 'TestPolari'#None
             port = None
 
         box = AddChannelBox(nick, host, channel, port, init)
 
         box.connect('new-channel', self.new_channel)
-        box.connect('new-channel', self._canvas.set_originals_boxes)
-        box.connect('cancel', self._canvas.set_originals_boxes)
+        box.connect('new-channel', self.viewer.set_originals_boxes)
+        box.connect('cancel', self.viewer.set_originals_boxes)
 
-        self._canvas.set_canvas(box)
+        self.viewer.set_canvas(box)
         self.show_all()
 
     def new_channel(self, widget, nick, host, channel, port):
-        self.create_new_room(host, channel, nick, port)
+        name = host + '@' + channel + ':' + nick
+        if name in self.rooms:
+            self._channels_view.select_item_from_string(name)
+            alert = TimeoutAlert(10)
+            alert.props.title = G.ALERT_TITLE
+            alert.props.msg = G.ALERT_MSG
+
+            hbox = alert.get_children()[0]
+            buttonbox = hbox.get_children()[1]
+            button = buttonbox.get_children()[0]
+            buttonbox.remove(button)
+
+            alert.connect('response', self.__response)
+            self.vbox.pack_start(alert, False, False, 0)
+
+        else:
+            self.create_new_room(host, channel, nick, port)
+
+        self.show_all()
+
+    def __response(self, alert, *args):
+        self.vbox.remove(alert)
 
     def create_new_room(self, host, channel, nick, port):
         if channel.startswith('#'):
@@ -160,9 +189,10 @@ class PolariActivity(activity.Activity):
         room['client'].entry = room['entry-speak']
         room['client'].nicker = room['entry-nick']
 
-        self.actual_room = host + '@' + channel
+        self.actual_room = host + '@' + channel + ':' + nick
         self.rooms[self.actual_room] = room
 
+        room['chat-view'].connect('stop-widget', self._stop_last_item_child, room)
         room['chat-view'].connect('nickname-changed', self.set_nickname, room)
         room['entry-speak'].connect('activate', self.send_message, room)
         room['client'].connect('connected', self.client_connected)
@@ -172,20 +202,28 @@ class PolariActivity(activity.Activity):
         room['chat-view'].set_client(room['client'])
         self.set_chat_view(room['chat-view'])
 
-        self._channels_view.add_channel(channel, host)
+        self._channels_view.add_channel(host, channel, nick)
 
     def _stop_last_item_child(self, client, room):
-        vbox = self._channels_view.sections[room['host']]
+        section = room['host'] + '@' + room['channel']
+        name = section + ':' + room['nickname']
+        nickname = room['nickname']
+        vbox = self._channels_view.sections[section]
+
         for item in vbox:
-            if item.host == room['host']:
-                item.stop_last_widget()
+            if isinstance(item, Gtk.Label):  # It's label show the host
+                continue
+
+            if item.name == name and item.nickname == nickname:
+                item.stop_spinner()
+                break
 
     def client_connected(self, client):
         client.entry.set_sensitive(True)
         client.nicker.set_sensitive(True)
 
     def set_chat_view(self, view):
-        self._canvas.set_chat_view(view)
+        self.viewer.set_chat_view(view)
         self.show_all()
 
     def send_message(self, widget, room):
