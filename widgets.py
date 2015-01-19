@@ -170,7 +170,12 @@ class ChatView(Gtk.VBox):
         self.entry = Gtk.Entry()
         hbox = Gtk.HBox()
 
+        hbox.set_margin_left(10)
+        hbox.set_margin_right(10)
+
+        self.set_entries_theme()
         self.create_tags()
+
         self.chat_area.set_editable(False)
         self.chat_area.set_cursor_visible(False)
         self.chat_area.set_wrap_mode(Gtk.WrapMode.WORD)
@@ -185,8 +190,8 @@ class ChatView(Gtk.VBox):
         self.nicker.connect('activate', lambda w: self.set_user(w.get_text()))
         self.entry.connect('activate', self.send_message)
 
-        hbox.pack_start(self.nicker, False, False, 0)
-        hbox.pack_end(self.entry, True, True, 0)
+        hbox.pack_start(self.nicker, False, False, 1)
+        hbox.pack_start(self.entry, True, True, 0)
         self.scrolled.add(self.chat_area)
         self.pack_start(self.scrolled, True, True, 5)
         self.pack_end(hbox, False, False, 5)
@@ -270,6 +275,23 @@ class ChatView(Gtk.VBox):
     def message_recived(self, client, _dict):
         self.add_message_to_view(_dict['sender'], _dict['message'])
 
+    def set_entries_theme(self):
+        theme_entry = "GtkEntry {border-radius:0px 30px 30px 0px;}"
+        css_provider_entry = Gtk.CssProvider()
+        css_provider_entry.load_from_data(theme_entry)
+
+        style_context = self.entry.get_style_context()
+        style_context.add_provider(css_provider_entry,
+                                   Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
+        theme_nicker = "GtkEntry {border-radius:30px 0px 0px 30px;}"
+        css_provider_nicker = Gtk.CssProvider()
+        css_provider_nicker.load_from_data(theme_nicker)
+
+        style_context = self.nicker.get_style_context()
+        style_context.add_provider(css_provider_nicker,
+                                   Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
     def create_tags(self):
         self.buffer.create_tag('nick', foreground='#4A90D9')
         self.buffer.create_tag('self', foreground='#FF2020')
@@ -320,7 +342,7 @@ class AddChannelBox(Gtk.EventBox):
         'cancel': (GObject.SIGNAL_RUN_FIRST, None, []),
         }
 
-    def __init__(self, nick=None, host=None, port=None, channel=None, init=False):
+    def __init__(self, nick=None, host=None, channel=None, port=None, init=False):
         Gtk.EventBox.__init__(self)
 
         box = Gtk.VBox()
