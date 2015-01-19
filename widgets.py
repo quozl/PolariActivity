@@ -286,22 +286,31 @@ class Field(Gtk.HBox):
     def __init__(self, label, prepopulate):
         Gtk.HBox.__init__(self)
 
-        lb = Gtk.Label()
-        lb.set_markup(
-            "<span size='large' foreground='%s'>%s</span>" % (
-                style.COLOR_BUTTON_GREY.get_html(),
-                label))
+        self.set_size_request(600, -1)
 
-        self.pack_start(lb, True, False, 0)
+        label = Gtk.Label(label)
+        label.modify_fg(Gtk.StateType.NORMAL, style.COLOR_BUTTON_GREY.get_gdk_color())
+        label.modify_font(Pango.FontDescription('30'))
+        self.pack_start(label, False, False, 50)
 
         self.entry = Gtk.Entry()
+        self.entry.modify_font(Pango.FontDescription('30'))
         self.entry.set_text(prepopulate)
         self.pack_end(self.entry, True, True, 0)
-        
+
         self.show_all()
 
     def get_value(self):
         return self.entry.get_text()
+
+
+class AddChannelButton(Gtk.Button):
+
+    def __init__(self, label):
+        Gtk.Button.__init__(self, label)
+
+        widget = self.get_children()[0]
+        widget.modify_font(Pango.FontDescription('30'))
 
 
 class AddChannelBox(Gtk.EventBox):
@@ -314,35 +323,42 @@ class AddChannelBox(Gtk.EventBox):
     def __init__(self, nick=None, host=None, port=None, channel=None):
         Gtk.EventBox.__init__(self)
 
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        boxi = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        box = Gtk.VBox()
+        hbox = Gtk.HBox()
         form = Gtk.VBox()
+        buttonbox = Gtk.HBox()
+        buttonbox.set_spacing(50)
 
         self.modify_bg(Gtk.StateType.NORMAL,
                        style.COLOR_WHITE.get_gdk_color())
 
         self.nick = Field('Nick', nick or 'Nickname')
+        self.nick.entry.connect('changed', self.__text_changed)
         form.pack_start(self.nick, False, False, 5)
 
-        self.server = Field('Server', 'irc.freenode.net')
+        self.server = Field('Server', host or 'irc.freenode.net')
+        self.server.entry.connect('changed', self.__text_changed)
         form.pack_start(self.server, False, False, 5)
 
         self.port = Field('Port', port or '8000')
+        self.port.entry.connect('changed', self.__text_changed)
         form.pack_start(self.port, False, False, 5)
 
         self.channels = Field('Channel', channel or '#sugar')
+        self.channels.entry.connect('changed', self.__text_changed)
         form.pack_start(self.channels, False, False, 5)
 
-        self.enter = Gtk.Button(label='Connect!')
+        self.enter = AddChannelButton('Connect!')
         self.enter.connect('clicked', self.__connect_clicked)
-        form.add(self.enter)
+        buttonbox.add(self.enter)
 
-        self.cancel = Gtk.Button(label='Cancel')
+        self.cancel = AddChannelButton('Cancel')
         self.cancel.connect('clicked', self.__cancel)
-        form.add(self.cancel)
+        buttonbox.add(self.cancel)
 
-        boxi.pack_start(form, True, False, 0)
-        box.pack_start(boxi, True, False, 0)
+        form.pack_start(buttonbox, True, True, 20)
+        hbox.pack_start(form, True, False, 0)
+        box.pack_start(hbox, True, False, 0)
         self.add(box)
         self.show_all()
 
@@ -350,13 +366,13 @@ class AddChannelBox(Gtk.EventBox):
         self.emit('cancel')
 
     def __text_changed(self, *args):
-        sensitive = bool(self.nick.get_text()) and \
-                bool(self.server.get_text()) and \
-                bool(self.channels.get_text()) and \
-                bool(self.port.get_text())
+        sensitive = bool(self.nick.get_value()) and \
+                    bool(self.server.get_value()) and \
+                    bool(self.channels.get_value()) and \
+                    bool(self.port.get_value())
 
         try:
-            int(self.port.get_text())
+            int(self.port.get_value())
 
         except ValueError:
             sensitive = False
