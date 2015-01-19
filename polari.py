@@ -57,7 +57,7 @@ class PolariActivity(activity.Activity):
         self.set_canvas(self._canvas)
         self.show_all()
 
-        self.add_channel()
+        self.add_channel(init=True)
 
     def remove_channel(self, widget, host, channel):
         room = self.rooms[host + '@' + channel]
@@ -118,20 +118,20 @@ class PolariActivity(activity.Activity):
         else:
             room['client'].nickname = nickname
 
-    def add_channel(self, widget=None):
-        if not self.actual_room:
-            nick = None
-            host = None
-            channel = None
-            port = None
-
-        else:
+    def add_channel(self, widget=None, init=False):
+        if self.actual_room:
             nick = self.rooms[self.actual_room]['nickname']
             host = self.rooms[self.actual_room]['host']
             channel = self.rooms[self.actual_room]['channel']
             port = self.rooms[self.actual_room]['port']
 
-        box = AddChannelBox(nick, host, channel, port)
+        else:
+            nick = None
+            host = None
+            channel = None
+            port = None
+
+        box = AddChannelBox(nick, host, channel, port, init)
 
         box.connect('new-channel', self.new_channel)
         box.connect('new-channel', self._canvas.set_originals_boxes)

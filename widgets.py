@@ -320,7 +320,7 @@ class AddChannelBox(Gtk.EventBox):
         'cancel': (GObject.SIGNAL_RUN_FIRST, None, []),
         }
 
-    def __init__(self, nick=None, host=None, port=None, channel=None):
+    def __init__(self, nick=None, host=None, port=None, channel=None, init=False):
         Gtk.EventBox.__init__(self)
 
         box = Gtk.VBox()
@@ -334,27 +334,32 @@ class AddChannelBox(Gtk.EventBox):
 
         self.nick = Field('Nick', nick or 'Nickname')
         self.nick.entry.connect('changed', self.__text_changed)
+        self.nick.entry.connect('activate', self.__connect_from_widget)
         form.pack_start(self.nick, False, False, 5)
 
         self.server = Field('Server', host or 'irc.freenode.net')
         self.server.entry.connect('changed', self.__text_changed)
+        self.server.entry.connect('activate', self.__connect_from_widget)
         form.pack_start(self.server, False, False, 5)
 
         self.port = Field('Port', port or '8000')
         self.port.entry.connect('changed', self.__text_changed)
+        self.port.entry.connect('activate', self.__connect_from_widget)
         form.pack_start(self.port, False, False, 5)
 
         self.channels = Field('Channel', channel or '#sugar')
         self.channels.entry.connect('changed', self.__text_changed)
+        self.channels.entry.connect('activate', self.__connect_from_widget)
         form.pack_start(self.channels, False, False, 5)
 
-        self.enter = AddChannelButton('Connect!')
-        self.enter.connect('clicked', self.__connect_clicked)
-        buttonbox.add(self.enter)
-
         self.cancel = AddChannelButton('Cancel')
+        self.cancel.set_sensitive(not init)
         self.cancel.connect('clicked', self.__cancel)
         buttonbox.add(self.cancel)
+
+        self.enter = AddChannelButton('Connect!')
+        self.enter.connect('clicked', self.__connect_from_widget)
+        buttonbox.add(self.enter)
 
         form.pack_start(buttonbox, True, True, 20)
         hbox.pack_start(form, True, False, 0)
@@ -362,10 +367,7 @@ class AddChannelBox(Gtk.EventBox):
         self.add(box)
         self.show_all()
 
-    def __cancel(self, widget):
-        self.emit('cancel')
-
-    def __text_changed(self, *args):
+    def get_possible(self):
         sensitive = bool(self.nick.get_value()) and \
                     bool(self.server.get_value()) and \
                     bool(self.channels.get_value()) and \
@@ -375,22 +377,27 @@ class AddChannelBox(Gtk.EventBox):
             int(self.port.get_value())
 
         except ValueError:
-            sensitive = False
+            return False
 
+        return sensitive
+
+    def try_connect(self):
+        if self.get_possible():
+            self.emit('new-channel',
+                      self.nick.get_value(),
+                      self.server.get_value(),
+                      self.channels.get_value(),
+                      int(self.port.get_value()))
+
+    def __cancel(self, widget):
+        self.emit('cancel')
+
+    def __text_changed(self, *args):
+        sensitive = self.get_possible()
         self.enter.set_sensitive(sensitive)
 
-    def __connect_clicked(self, button):
-        data = {
-            'nick': self.nick.get_value(),
-            'server': self.server.get_value(),
-            'channels': self.channels.get_value(),
-            'port': int(self.port.get_value())
-        }
-        self.emit('new-channel',
-                  data['nick'],
-                  data['server'],
-                  data['channels'],
-                  data['port'])
+    def __connect_from_widget(self, entry):
+        self.try_connect()
 
 
 class Canvas(Gtk.HBox):
