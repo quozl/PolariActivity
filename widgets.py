@@ -267,7 +267,6 @@ class ChatView(Gtk.VBox):
         self.add_text_with_tag(message + '\n', 'sys-msg')
 
     def add_message_to_view(self, user, message, force=False):
-        for_me = False
         if user != self.user or force:
             if user == self.last_user:
                 user = ' ' * (len(user) + 2)
@@ -283,7 +282,8 @@ class ChatView(Gtk.VBox):
 
             self.add_text_with_tag(message + '\n', 'message')
             end = self.buffer.get_iter_at_offset(offset)
-            self.search_and_mark(self.user, end, 'self')
+            if self.last_user != self.user:
+                self.search_and_mark(self.user, end, 'self')
 
             offset = end.get_offset()
 
