@@ -275,21 +275,21 @@ class ChatView(Gtk.VBox):
                 self.last_user = user
                 user += ': '
 
-            self.add_text_with_tag(user, 'nick')
+        self.add_text_with_tag(user, 'nick')
 
-            end = self.buffer.get_end_iter()
-            offset = end.get_offset()
+        end = self.buffer.get_end_iter()
+        offset = end.get_offset()
 
-            self.add_text_with_tag(message + '\n', 'message')
+        self.add_text_with_tag(message + '\n', 'message')
+        end = self.buffer.get_iter_at_offset(offset)
+        if self.last_user != self.user:
+            self.search_and_mark(self.user, end, 'self')
+
+        offset = end.get_offset()
+
+        for url in G.get_urls(message):
             end = self.buffer.get_iter_at_offset(offset)
-            if self.last_user != self.user:
-                self.search_and_mark(self.user, end, 'self')
-
-            offset = end.get_offset()
-
-            for url in G.get_urls(message):
-                end = self.buffer.get_iter_at_offset(offset)
-                self.search_and_mark(url, end, 'url')
+            self.search_and_mark(url, end, 'url')
 
     def search_and_mark(self, text, start, tag):
         end = self.buffer.get_end_iter()
