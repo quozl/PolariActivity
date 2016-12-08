@@ -24,7 +24,7 @@ try:
     from twisted.internet import gtk3reactor
     gtk3reactor.install()
 except ReactorAlreadyInstalledError:
-    print ("Error doing 'gtk3reactor.install(), may not work properly")
+    print ("Error doing 'gtk3reactor.install()', may not work properly")
 
 from twisted.words.protocols import irc
 from twisted.internet import reactor
@@ -69,12 +69,12 @@ class Client(irc.IRCClient, GObject.GObject):
         self.emit("nickname-changed", nickname)
 
     def irc_NICK(self, prefix, params):
-        old_nick = prefix.split('!')[0]
+        old_nick = prefix.split("!")[0]
         new_nick = params[0]
         self.emit("user-nickname-changed", old_nick, new_nick)
 
     def alterCollidedNick(self, nickname):
-        return nickname + '^'
+        return nickname + "_"
 
     def userJoined(self, user, channel):
         self.emit("user-joined", user, channel)

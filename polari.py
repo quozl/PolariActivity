@@ -20,7 +20,7 @@
 
 from gettext import gettext as _
 
-from twisted.internet import reactor
+from consts import Screen
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -30,7 +30,8 @@ from sugar3.activity import activity
 from sugar3.graphics.alert import TimeoutAlert
 from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
-from sugar3.activity.widgets import _create_activity_icon as ActivityIcon
+from sugar3.activity.widgets import StopButton
+from sugar3.activity.widgets import ActivityToolbarButton
 
 from polari_canvas import PolariCanvas
 
@@ -40,45 +41,47 @@ class PolariActivity(activity.Activity):
     def __init__(self, handle):
         activity.Activity.__init__(self, handle)
 
-        self.box = Polari()
-        self.set_canvas(self.box)
+        self.polari = PolariCanvas()
+        self.set_canvas(self.polari)
 
         self.make_toolbar()
         self.show_all()
 
     def make_toolbar(self):
-        def make_separator(expand=False, size=0):
+        def make_separator(expand=False):
             separator = Gtk.SeparatorToolItem()
-            separator.set_size_request(size, -1)
             if expand:
                 separator.set_expand(True)
-
-            if expand or size:
                 separator.props.draw = False
 
             return separator
 
         toolbar_box = ToolbarBox()
-        toolbar = toolbar_box.toolbar
-        activity_button = ToolButton()
-        button_add = ToolButton(Gtk.STOCK_ADD)
-        self.entry_nick = Gtk.Entry()
-        stop_button = ToolButton('activity-stop')
-
-        activity_button.set_icon_widget(ActivityIcon(None))
-        button_add.set_tooltip(_('Add channel'))
-        stop_button.connect('clicked', self._exit)
-        stop_button.props.accelerator = '<Ctrl>Q'
-
-        ##button_add.connect('clicked', self.add_channel)
-
-        toolbar.insert(activity_button, -1)
-        toolbar.insert(make_separator(size=30), -1)
-        toolbar.insert(button_add, -1)
-        toolbar.insert(make_separator(expand=True), -1)
-        toolbar.insert(stop_button, -1)
         self.set_toolbar_box(toolbar_box)
 
+        toolbar = toolbar_box.toolbar
+
+        activity_button = ActivityToolbarButton(self)
+        toolbar.insert(activity_button, -1)
+
+        toolbar.insert(make_separator(), -1)
+
+        button_add = ToolButton(Gtk.STOCK_ADD)
+        button_add.set_tooltip(_("Add a channel"))
+        button_add.connect("clicked", self._add_channel)
+        toolbar.insert(button_add, -1)
+
+        toolbar.insert(make_separator(True), -1)
+
+        stop_button = ToolButton("activity-stop")
+        stop_button.connect("clicked", self._exit)
+        stop_button.props.accelerator = "<Ctrl>Q"
+        toolbar.insert(stop_button, -1)
+
     def _exit(self, *args):
-        self.close()
+        from twisted.internet import reactor
         reactor.stop()
+        self.close()
+
+    def _add_channel(self, button):
+        self.polari.set_screen(Screen.NEW_CHANNEL)

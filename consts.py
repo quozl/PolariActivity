@@ -33,7 +33,12 @@ except ImportError:
     SUGAR = False
 
 
-CHAT_FONT = "Monospace 12"
+CHAT_FONT = None
+if SUGAR:
+    CHAT_FONT = "Monospace 14"
+else:
+    CHAT_FONT = "Monospace 12"
+
 
 NICKNAME_USED = _(' is already in use.')
 LOST_CONNECTION = _('Lost lost conection with the server...')
@@ -52,14 +57,20 @@ class Color:
     WHITE = Gdk.color_parse('#FFFFFF')
     GREY = Gdk.Color(32896, 32896, 32896)
 
-    NICK_TAG = "#4A90D9"
+    NICK_TAG = None
     MENTION_TAG = "#FF2020"
     MESSAGE_TAG = None
-    SYS_MESSAGE_TAG = "#AAAAAA"
+    SYS_MESSAGE_TAG = None
     URL_TAG = "#0000FF"
 
     if SUGAR:
+        NICK_TAG = "#005DBF"
         MESSAGE_TAG = "#FFFFFF"
+        SYS_MESSAGE_TAG = "#444444"
+
+    else:
+        NICK_TAG = "#4A90D9"
+        SYS_MESSAGE_TAG = "#AAAAAA"
 
 
 class IRCState:
