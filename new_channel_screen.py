@@ -82,7 +82,7 @@ class NewChannelScreen(Gtk.EventBox):
 
         self.form = Gtk.VBox()
 
-        self.nick = Field("Nick", nick or "PolariTest")
+        self.nick = Field("Nick", nick or "Nickname")
         self.nick.entry.connect("changed", self.__text_changed)
         self.nick.entry.connect("activate", self.send_data)
 
@@ -103,7 +103,7 @@ class NewChannelScreen(Gtk.EventBox):
         if not self.logged:
             self.form.pack_start(self.port, False, False, 5)
 
-        self.channels = Field("Channel", channel or "#test2")
+        self.channels = Field("Channel", channel or "#sugar")
         self.channels.entry.connect("changed", self.__text_changed)
         self.channels.entry.connect("activate", self.send_data)
         self.form.pack_start(self.channels, False, False, 5)
@@ -138,7 +138,11 @@ class NewChannelScreen(Gtk.EventBox):
         if self.get_possible():
             if not self.logged:
                 self.logged = True
-                self.emit("log-in", self.nick.get_value(), self.server.get_value(), self.channels.get_value(), int(self.port.get_value()))
+                self.emit("log-in",
+                    self.nick.get_value(),
+                    self.server.get_value(),
+                    self.channels.get_value(),
+                    int(self.port.get_value()))
 
             else:
                 self.emit("new-channel", self.channels.get_value())
