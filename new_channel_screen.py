@@ -18,7 +18,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-from consts import Color
+from consts import Color, NEW_CHANNEL_SCREEN_FONT
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -37,11 +37,11 @@ class Field(Gtk.HBox):
 
         label = Gtk.Label(label)
         label.modify_fg(Gtk.StateType.NORMAL, Color.GREY)
-        label.modify_font(Pango.FontDescription("30"))
+        label.modify_font(Pango.FontDescription(NEW_CHANNEL_SCREEN_FONT))
         self.pack_start(label, False, False, 50)
 
         self.entry = Gtk.Entry()
-        self.entry.modify_font(Pango.FontDescription("30"))
+        self.entry.modify_font(Pango.FontDescription(NEW_CHANNEL_SCREEN_FONT))
         self.entry.set_text(str(prepopulate))
         self.pack_end(self.entry, True, True, 0)
 
@@ -57,7 +57,7 @@ class AddChannelButton(Gtk.Button):
         Gtk.Button.__init__(self, label)
 
         widget = self.get_children()[0]
-        widget.modify_font(Pango.FontDescription("30"))
+        widget.modify_font(Pango.FontDescription(NEW_CHANNEL_SCREEN_FONT))
 
 
 class NewChannelScreen(Gtk.EventBox):
@@ -68,7 +68,7 @@ class NewChannelScreen(Gtk.EventBox):
         "cancel": (GObject.SIGNAL_RUN_FIRST, None, []),
     }
 
-    def __init__(self, logged=False, nick="PolariTest", host=None, channel="#test2", port=None, init=False):
+    def __init__(self, logged=False, nick=None, host=None, channel=None, port=None, init=False):
         Gtk.EventBox.__init__(self)
 
         self.logged = logged

@@ -94,6 +94,10 @@ class Client(irc.IRCClient, GObject.GObject):
     def set_nickname(self, new_nick):
         self.setNick(new_nick)
 
+    #def dataReceived(self, data):
+    #    print "dataReceived", data
+    #    pass
+
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):
 

@@ -39,6 +39,7 @@ if SUGAR:
 else:
     CHAT_FONT = "Monospace 12"
 
+NEW_CHANNEL_SCREEN_FONT = "20"
 
 NICKNAME_USED = _(' is already in use.')
 LOST_CONNECTION = _('Lost lost conection with the server...')

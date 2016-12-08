@@ -174,10 +174,10 @@ class PolariCanvas(Gtk.VBox):
         if channel == self.factory.protocol.nickname and nickname not in self.chat_box.channels:
             self.new_channel(nickname, add_hash=False, show=nickname)
 
-        if channel != self.factory.protocol.nickname:
+        if channel != self.factory.protocol.nickname:  # Channel message
             self.chat_box.message_recived(channel, nickname, message)
 
-        else:
+        else:  # Direct message
             self.chat_box.message_recived(nickname, nickname, message)
 
     def _nickname_changed(self, factory, nickname):
