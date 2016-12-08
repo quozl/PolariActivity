@@ -20,7 +20,7 @@
 
 from gettext import gettext as _
 
-from consts import CONNECTION_ERROR, NICKNAME_USED
+from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, Color
 from utils import get_urls
 
 import gi
@@ -126,45 +126,34 @@ class ChatBox(Gtk.VBox):
         self.buffers[channel].insert_with_tags_by_name(end, text, tag)
 
     def add_system_message(self, channel, message):
-        ##if message == self.nick + NICKNAME_USED:
-            ##if not self.nicker.get_sensitive():
-            ##    self.nicker.set_sensitive(True)
-
-            ##else:
-            ##    self.set_nick(self.client.me, False)
-            ##pass
-
-        ##elif message == CONNECTION_ERROR:
-        ##    self.emit('stop-widget')
-
-        self.last_nick[channel] = '<SYSTEM>'
-        self.add_text_with_tag(channel, message + '\n', 'sys-msg')
+        self.last_nick[channel] = "<SYSTEM>"
+        self.add_text_with_tag(channel, message + "\n", "sys-msg")
 
     def add_message_to_view(self, channel, user, message, force=False):
         if user != self.nick or force:
             if user == self.last_nick[channel]:
-                user = ' ' * (len(user) + 2)
+                user = " "  * (len(user) + 2)
 
             else:
                 self.last_nick[channel] = user
-                user += ': '
+                user += ": "
 
-        self.add_text_with_tag(channel, user, 'nick')
+        self.add_text_with_tag(channel, user, "nick")
 
         end = self.buffers[channel].get_end_iter()
         offset = end.get_offset()
 
-        self.add_text_with_tag(channel, message + '\n', 'message')
+        self.add_text_with_tag(channel, message + "\n", "message")
         end = self.buffers[channel].get_iter_at_offset(offset)
 
         if self.last_nick[channel] != self.nick:
-            self.search_and_mark(channel, self.nick, end, 'self')
+            self.search_and_mark(channel, self.nick, end, "mention")
 
         offset = end.get_offset()
 
         for url in get_urls(message):
             end = self.buffers[channel].get_iter_at_offset(offset)
-            self.search_and_mark(channel, url, end, 'url')
+            self.search_and_mark(channel, url, end, "url")
 
     def search_and_mark(self, channel, text, start, tag):
         end = self.buffers[channel].get_end_iter()
@@ -197,11 +186,16 @@ class ChatBox(Gtk.VBox):
 
     def create_tags(self, channel):
         buffer = self.buffers[channel]
-        buffer.create_tag('nick', foreground='#4A90D9')
-        buffer.create_tag('self', foreground='#FF2020')
-        buffer.create_tag('message', background='#FFFFFF')
-        buffer.create_tag('sys-msg', foreground='#AAAAAA')
-        buffer.create_tag('url', underline=Pango.Underline.SINGLE, foreground='#0000FF')
+        buffer.create_tag("nick", foreground=Color.NICK_TAG)
+        buffer.create_tag("mention", foreground=Color.MENTION_TAG)
+        buffer.create_tag("sys-msg", foreground=Color.SYS_MESSAGE_TAG)
+        buffer.create_tag("url", underline=Pango.Underline.SINGLE, foreground=Color.URL_TAG)
+
+        if not SUGAR:
+            buffer.create_tag("message", background=Color.MESSAGE_TAG)
+
+        else:
+            buffer.create_tag("message")
 
     def get_entry(self):
         return self.entry

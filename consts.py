@@ -25,6 +25,12 @@ gi.require_version("Gdk", "3.0")
 
 from gi.repository import Gdk
 
+SUGAR = None
+try:
+    import sugar3
+    SUGAR = True
+except ImportError:
+    SUGAR = False
 
 NICKNAME_USED = _(' is already in use.')
 LOST_CONNECTION = _('Lost lost conection with the server...')
@@ -42,6 +48,15 @@ class Color:
     BLUE = Gdk.color_parse('#4A90D9')
     WHITE = Gdk.color_parse('#FFFFFF')
     GREY = Gdk.Color(32896, 32896, 32896)
+
+    NICK_TAG = "#4A90D9"
+    MENTION_TAG = "#FF2020"
+    MESSAGE_TAG = None
+    SYS_MESSAGE_TAG = "#AAAAAA"
+    URL_TAG = "#0000FF"
+
+    if SUGAR:
+        MESSAGE_TAG = "#FFFFFF"
 
 
 class IRCState:
