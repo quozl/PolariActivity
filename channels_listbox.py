@@ -35,7 +35,7 @@ class ChannelItem(Gtk.EventBox):
         'removed': (GObject.SIGNAL_RUN_FIRST, None, []),
     }
 
-    def __init__(self, channel):
+    def __init__(self, channel, show=None):
         Gtk.EventBox.__init__(self)
 
         self.selected = False
@@ -48,7 +48,7 @@ class ChannelItem(Gtk.EventBox):
         self.hbox = Gtk.HBox()
         self.add(self.hbox)
 
-        self.label = Gtk.Label(channel)
+        self.label = Gtk.Label(show if show else channel)
         self.label.modify_font(Pango.FontDescription('15'))
         self.label.set_margin_left(10)
         self.hbox.pack_start(self.label, False, False, 0)
@@ -120,8 +120,8 @@ class ChannelsListBox(Gtk.ScrolledWindow):
 
         self.add(self.vbox)
 
-    def add_channel(self, channel):
-        item = ChannelItem(channel)
+    def add_channel(self, channel, show=None):
+        item = ChannelItem(channel, show=None)
         item.connect('selected', self.select_item)
         item.connect('removed', self.remove_item)
         self.vbox.pack_start(item, False, False, 0)
