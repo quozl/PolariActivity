@@ -68,7 +68,7 @@ class NewChannelScreen(Gtk.EventBox):
         "cancel": (GObject.SIGNAL_RUN_FIRST, None, []),
     }
 
-    def __init__(self, logged=False, nick=None, host=None, channel=None, port=None, init=False):
+    def __init__(self, logged=False, nick="PolariTest", host=None, channel="#test2", port=None, init=False):
         Gtk.EventBox.__init__(self)
 
         self.logged = logged

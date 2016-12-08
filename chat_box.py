@@ -34,10 +34,10 @@ from gi.repository import GObject
 class ChatBox(Gtk.VBox):
 
     __gsignals__ = {
-        "nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str]),
         "stop-widget": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
         "send-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, message
         "command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),   # Channel, command, parameters
+        "change-nickname": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # New nickname
     }
 
     def __init__(self):
@@ -51,6 +51,7 @@ class ChatBox(Gtk.VBox):
         self.buffers = { }  # channel: GtkTextBuffer
 
         self.set_size_request(400, -1)
+        self.set_margin_left(10)
 
         self.scroll = Gtk.ScrolledWindow()
         self.pack_start(self.scroll, True, True, 5)
@@ -64,7 +65,7 @@ class ChatBox(Gtk.VBox):
         self.nicker.set_size_request(100, -1)
         self.nicker.set_max_length(16)
         self.nicker.set_sensitive(False)
-        #self.nicker.connect('activate', lambda w: self.set_user(w.get_text()))
+        self.nicker.connect("activate", self._change_nickname)
         hbox.pack_start(self.nicker, False, False, 1)
 
         self.entry = Gtk.Entry()
@@ -74,6 +75,10 @@ class ChatBox(Gtk.VBox):
         hbox.pack_start(self.entry, True, True, 0)
 
         self.set_entries_theme()
+
+    def _change_nickname(self, widget):
+        self.emit("change-nickname", self.nicker.get_text())
+        self.nicker.set_text("")
 
     def add_channel(self, channel):
         if channel not in self.channels:

@@ -41,13 +41,13 @@ class Client(irc.IRCClient, GObject.GObject):
     __gsignals__ = {
         "joined": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
         "system-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Message
-        "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # Nickname, Channel, Message
+        "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # Channel, Nickname, Message
         "nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Nickname
         "user-nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Old nickname, New nickname
-        "user-joined": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
-        "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
-        "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
-        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # User, Channel, Kicker, message
+        "user-joined": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nickname
+        "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nickname
+        "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Nickname, Message
+        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, Message
     }
 
     def start_gobject(self):
@@ -61,7 +61,7 @@ class Client(irc.IRCClient, GObject.GObject):
         self.emit("joined", channel)
 
     def privmsg(self, user, channel, msg):
-        self.emit("user-message", user.split("!")[0], channel, msg)
+        self.emit("user-message", channel, user.split("!")[0], msg)
 
     def nickChanged(self, nickname):
         print "NICKCHANGED", nickname
@@ -76,20 +76,23 @@ class Client(irc.IRCClient, GObject.GObject):
     def alterCollidedNick(self, nickname):
         return nickname + "_"
 
-    def userJoined(self, user, channel):
-        self.emit("user-joined", user, channel)
+    def userJoined(self, nickname, channel):
+        self.emit("user-joined", channel, nickname)
 
-    def userLeft(self, user, channel):
-        self.emit("user-left", user, channel)
+    def userLeft(self, nickname, channel):
+        self.emit("user-left", channel, nickname)
 
-    def userQuit(self, user, channel):
-        self.emit("user-quit", user, channel)
+    def userQuit(self, nickname, message):
+        self.emit("user-quit", nickname, message)
 
-    def userKicked(self, user, channel, kicker, message):
-        self.emit("user-kicked", user, channel, kicker, message)
+    def userKicked(self, nickname, channel, kicker, message):
+        self.emit("user-kicked", channel, nickname, kicker, message)
 
     def close_channel(self, channel):
         self.leave(channel, "")
+
+    def set_nickname(self, new_nick):
+        self.setNick(new_nick)
 
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):
@@ -99,13 +102,13 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
     __gsignals__ = {
         "joined": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
         "system-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Message
-        "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # User, Channel, Message
+        "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # Channel, Nickname, Message
         "nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Nickname
         "user-nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Old nickname, New nickname
-        "user-joined": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
-        "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
-        "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
-        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # User, Channel, Kicker, message
+        "user-joined": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nickname
+        "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nickname
+        "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Nickname, Message
+        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, message
     }
 
     def __init__(self, channels):
@@ -164,8 +167,8 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
     def _client_system_message(self, client, message):
         self.emit("system-message", message)
 
-    def _client_user_message(self, client, nickname, channel, message):
-        self.emit("user-message", nickname, channel, message)
+    def _client_user_message(self, client, channel, nickname, message):
+        self.emit("user-message", channel, nickname, message)
 
     def _client_nickname_changed(self, client, nick):
         # TODO: send "user-nickname-changed" too
@@ -174,14 +177,14 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
     def _client_user_nickname_changed(self, client, old_nick, new_nick):
         self.emit("user-nickname-changed", old_nick, new_nick)
 
-    def _client_user_joined(self, client, user, channel):
-        self.emit("user-joined", user, channel)
+    def _client_user_joined(self, client, channel, nickname):
+        self.emit("user-joined", channel, nickname)
 
-    def _client_left(self, client, user, channel):
-        self.emit("user-left", user, channel)
+    def _client_left(self, client, channel, nickname):
+        self.emit("user-left", channel, nickname)
 
-    def _client_quit(self, client, user, channel):
-        self.emit("user-quit", user, channel)
+    def _client_quit(self, client, nickname, message):
+        self.emit("user-quit", nickname, message)
 
-    def _client_kicked(self, client, user, channel, kicker, message):
-        self.emit("user-kicked", user, channel, kicker, message)
+    def _client_kicked(self, client, channel, nickname, kicker, message):
+        self.emit("user-kicked", channel, nickname, kicker, message)

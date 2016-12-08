@@ -44,6 +44,9 @@ class PolariCanvas(Gtk.VBox):
         self.factory.connect("user-message", self._user_message)
         self.factory.connect("nickname-changed", self._nickname_changed)
         self.factory.connect("user-nickname-changed", self._user_nickname_changed)
+        self.factory.connect("user-joined", self._user_joined)
+        self.factory.connect("user-left", self._user_left)
+        self.factory.connect("user-quit", self._user_quit)
 
         self.channel_screen = NewChannelScreen()
         self.channel_screen.connect("log-in", self._log_in)
@@ -59,6 +62,7 @@ class PolariCanvas(Gtk.VBox):
         self.chat_box = ChatBox()
         self.chat_box.connect("send-message", self._send_message)
         self.chat_box.connect("command", self.run_command)
+        self.chat_box.connect("change-nickname", self._change_nickname)
         self.chat_screen.pack_start(self.chat_box, True, True, 0)
 
         self.set_screen(Screen.NEW_CHANNEL)
@@ -89,6 +93,12 @@ class PolariCanvas(Gtk.VBox):
     def send_message(self, channel, message):
         self.factory.client.msg(channel, message)
 
+    def _change_nickname(self, widget, new_nickname):
+        self.change_nickname(new_nickname)
+
+    def change_nickname(self, new_nickname):
+        self.factory.client.set_nickname(new_nickname)
+
     def run_command(self, widget, channel, command, parameters=""):
         if command == "/join":
             for channel in parameters.split(" "):
@@ -101,6 +111,9 @@ class PolariCanvas(Gtk.VBox):
             self.new_channel(nickname, add_hash=False)
             self.send_message(nickname, message)
             self.chat_box.add_message_to_view(nickname, self.factory.protocol.nickname, message, force=True)
+
+        elif command == "/nick":
+            self.change_nickname(parameters)
 
     def _log_in(self, widget, nick, host, channel, port):
         self.set_screen(Screen.CHAT)
@@ -146,7 +159,8 @@ class PolariCanvas(Gtk.VBox):
             self.chat_box.add_system_message(channel, "Joined to: %s" % channel)
 
         self.channels_listbox.change_spinner(channel, False)
-        self.chat_box.get_entry().set_sensitive(True)
+        self.chat_box.entry.set_sensitive(True)
+        self.chat_box.nicker.set_sensitive(True)
 
     def _system_message(self, factory, channel, message):
         if channel == "ALLCHANNELS":
@@ -156,7 +170,7 @@ class PolariCanvas(Gtk.VBox):
         else:
             self.chat_box.add_system_message(channel, message)
 
-    def _user_message(self, factory, nickname, channel, message):
+    def _user_message(self, factory, channel, nickname, message):
         if channel == self.factory.protocol.nickname and nickname not in self.chat_box.channels:
             self.new_channel(nickname, add_hash=False, show=nickname)
 
@@ -170,7 +184,20 @@ class PolariCanvas(Gtk.VBox):
         self.chat_box.set_nickname(nickname)
 
     def _user_nickname_changed(self, factory, old_nick, new_nick):
-        self.chat_box.add_system_message(channel, "%s has changed nick to %s" % (old_nick, new_nick))
+        # TODO: show message only in connecteds channels
+        for channel in self.chat_box.channels:
+            self.chat_box.add_system_message(channel, "%s has changed nick to %s" % (old_nick, new_nick))
+
+    def _user_joined(self, factory, channel, nickname):
+        self.chat_box.add_system_message(channel, "%s joined." % nickname)
+
+    def _user_left(self, factory, channel, nickname):
+        self.chat_box.add_system_message(channel, "%s has left." % nickname)
+
+    def _user_quit(self, factory, nickname, message):
+        # TODO: show message only in connecteds channels
+        for channel in self.chat_box.channels:
+            self.chat_box.add_system_message(channel, "%s has quit. [%s]" % (nickname, message))
 
 
 if __name__ == "__main__":
