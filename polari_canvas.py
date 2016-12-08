@@ -176,9 +176,14 @@ class PolariCanvas(Gtk.VBox):
 if __name__ == "__main__":
     def _quit(win):
         from twisted.internet import reactor
+        from twisted.internet.error import ReactorNotRunning
 
         Gtk.main_quit()
-        reactor.stop()
+
+        try:
+            reactor.stop()
+        except ReactorNotRunning:
+            pass
 
     def _clicked(button, polari):
         polari.set_screen(Screen.NEW_CHANNEL)

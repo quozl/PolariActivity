@@ -80,7 +80,13 @@ class PolariActivity(activity.Activity):
 
     def _exit(self, *args):
         from twisted.internet import reactor
-        reactor.stop()
+        from twisted.internet.error import ReactorNotRunning
+
+        try:
+            reactor.stop()
+        except ReactorNotRunning:
+            pass
+
         self.close()
 
     def _add_channel(self, button):
