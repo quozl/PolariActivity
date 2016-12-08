@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014, Cristian García <cristian99garcia@gmail.com>
+# Copyright (C) 2014-2016, Cristian García <cristian99garcia@gmail.com>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,202 +18,170 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+from twisted.internet.error import ReactorAlreadyInstalledError
 
-import globals as G
-from gettext import gettext as _
+try:
+    from twisted.internet import gtk3reactor
+    gtk3reactor.install()
+except ReactorAlreadyInstalledError:
+    print ("Error doing 'gtk3reactor.install(), may not work properly")
+
+from twisted.words.protocols import irc
+from twisted.internet import reactor
+from twisted.internet import protocol
+from twisted.internet import ssl
 
 from gi.repository import GObject
 
-import socket
-import thread
 
+class Client(irc.IRCClient, GObject.GObject):
 
-class Client(GObject.GObject):
+    nickname = "nickname"
 
     __gsignals__ = {
-        'new-user-message': (GObject.SIGNAL_RUN_FIRST, None, [object]),
-        'system-message': (GObject.SIGNAL_RUN_FIRST, None, [str]),
-        'connected': (GObject.SIGNAL_RUN_FIRST, None, []),
-        }
+        "joined": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
+        "system-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Message
+        "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # Nickname, Channel, Message
+        "nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Nickname
+        "user-nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Old nickname, New nickname
+        "user-joined": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
+        "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
+        "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
+        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # User, Channel, Kicker, message
+    }
 
-    def __init__(self, data):
+    def start_gobject(self):
         GObject.GObject.__init__(self)
 
-        self.connected = False
-        self.active = True
-        self.last_nickname = None
+    def signedOn(self):
+        for c in self.factory.channels:
+            self.join(c)
 
-        self.socket = socket.socket()
-        self.set_data(data)
+    def joined(self, channel):
+        self.emit("joined", channel)
 
-    def set_data(self, data):
-        self.nickname = data['nickname']
-        self.channel = data['channel']
-        self.port = data['port']
-        self.host = data['host']
-        self.max_characters = data['max-characters']
+    def privmsg(self, user, channel, msg):
+        self.emit("user-message", user.split("!")[0], channel, msg)
 
-        print '\n******** Data setted ********'
-        print 'nickname:', self.nickname
-        print 'channel:', self.channel
-        print 'port:', self.port
-        print 'host:', self.host, '\n'
-
-        if not self.channel.startswith('#'):
-            self.channel = '#' + self.channel
-
-        try:
-            self.socket.connect((self.host, self.port))
-
-        except:
-            self.__send_connecting_error()
-            print '******** Error to connect to server... ********'
-
-    def set_nickname(self, nickname):
-        print '\n******** Setting nickname ********'
-        print 'nickname:', nickname, '\n'
-
-        self.last_nickname = self.nickname
+    def nickChanged(self, nickname):
+        print "NICKCHANGED", nickname
         self.nickname = nickname
+        self.emit("nickname-changed", nickname)
 
-        try:
-            self.send('NICK %s' % self.nickname)
-            self.send('USER %(nick)s %(nick)s %(nick)s :%(nick)s' % {'nick': self.nickname})
-        except:
-            self.__send_connecting_error()
+    def irc_NICK(self, prefix, params):
+        old_nick = prefix.split('!')[0]
+        new_nick = params[0]
+        self.emit("user-nickname-changed", old_nick, new_nick)
 
-    def start(self):
-        print '******** Starting a new thread ********\n'
+    def alterCollidedNick(self, nickname):
+        return nickname + '^'
 
-        try:
-            thread.start_new_thread(self.__start, ())
+    def userJoined(self, user, channel):
+        self.emit("user-joined", user, channel)
 
-        except:
-            self.emit('system-message', G.LOST_CONNECTION)
-            self.close()
+    def userLeft(self, user, channel):
+        self.emit("user-left", user, channel)
 
-    def check_sys_msg(self, *args):
-        if self.system_messages:
-            for x in self.system_messages:
-                self.emit('system-message', x)
+    def userQuit(self, user, channel):
+        self.emit("user-quit", user, channel)
 
-        self.system_messages = []
+    def userKicked(self, user, channel, kicker, message):
+        self.emit("user-kicked", user, channel, kicker, message)
 
-    def __start(self, *args):
-        print '******** Starting to receive data ********'
+    def close_channel(self, channel):
+        self.leave(channel, "")
 
-        self.set_nickname(self.nickname)
 
-        self.system_messages = []
-        GObject.timeout_add_seconds(1, self.check_sys_msg, ())
+class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
-        while self.active:
-            buf = self.socket.recv(self.max_characters)
-            lines = buf.split('\n')
-            for data in lines:
-                data = str(data).strip()
+    protocol = Client
 
-                if data == '':
-                    continue
+    __gsignals__ = {
+        "joined": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
+        "system-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Message
+        "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # User, Channel, Message
+        "nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Nickname
+        "user-nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Old nickname, New nickname
+        "user-joined": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
+        "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
+        "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # User, Channel
+        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # User, Channel, Kicker, message
+    }
 
-                if data.find('PING') != -1:
-                    n = data.split(':')[1]
-                    self.send('PONG :' + n)
-                    if self.connected == False:
-                        self.perform()
-                        self.connected = True
+    def __init__(self, channels):
+        GObject.GObject.__init__(self)
 
-                print 'Data received:   ', data
+        self.channels = channels
+        self.client = None
 
-                if len(data.split(' ')) >= 4 and 'PRIVMSG' in data.split(' '):
-                    args = data.split(' ')
-                    if args[0].startswith(':') and '!':
-                        system_message = False
-                        message_started = False
-                        message = ''
-                        # A message of a user
+    def buildProtocol(self, addr):
+        self.client = Client()
+        self.client.factory = self
+        self.client.start_gobject()
 
-                        name = args[0][1:].split('!')[0]
-                        _type = args[1]
-                        channel = args[2]
-                        #message = data.split(':')[-1]
+        self.client.connect("joined", self._client_joined)
+        self.client.connect("system-message", self._client_system_message)
+        self.client.connect("user-message", self._client_user_message)
+        self.client.connect("nickname-changed", self._client_nickname_changed)
+        self.client.connect("user-nickname-changed", self._client_user_nickname_changed)
+        self.client.connect("user-joined", self._client_user_joined)
+        self.client.connect("user-left", self._client_left)
+        self.client.connect("user-quit", self._client_quit)
+        self.client.connect("user-kicked", self._client_kicked)
 
-                        for x in data[1:]:
-                            if message_started:
-                                message += x
+        return self.client
 
-                            if x == ':':
-                                message_started = True
+    def add_channel(self, channel):
+        if channel not in self.channels:
+            self.channels.append(channel)
 
-                        _dict = {'sender': name,
-                                 'type': _type,
-                                 'channel': channel,
-                                 'message': message}
+            if self.client is not None:
+                # TODO: check if client is joined
+                self.client.join(channel)
 
-                        self.emit('new-user-message', _dict)
+    def remove_channel(self, channel):
+        if channel in self.channels:
+            self.channels.remove(channel)
 
-                    else:
-                        system_message = True
+            if self.client is not None:
+                self.client.close_channel(channel)
 
-                else:
-                    system_message = True
+    def clientConnectionLost(self, connector, reason):
+        self.emit("system-message", "ALLCHANNELS", "Connection lost: %s" % reason)
+        connector.connect()
 
-                if system_message:
-                    message = ''
-                    channel = ''
+    def clientConnectionFailed(self, connector, reason):
+        self.emit("system-message", "ALLCHANNELS", "Connection failed: %s" % reason)
 
-                    if not data.startswith(':'):
-                        continue
+    def start_connection(self, host, port):
+        self.emit("system-message", "ALLCHANNELS", "Connecting to %s:%d" % (host, port))
+        reactor.connectTCP(host, port, self)
+        reactor.run()
 
-                    if len(data.split(' ')) == 3 and 'JOIN' in data.split(' '):
-                        # Any joined to the channel
-                        sender = data[1:].split('!')[0]
-                        channel = data.split(' ')[-1]
-                        message = sender + _(' joined to ') + channel
+    def _client_joined(self, client, channel):
+        self.emit("joined", channel)
 
-                    if len(data.split(' ')) == 9 and ':Nickname is already in use.' in data and self.nickname in data:
-                        # New nickname in use
-                        message = self.nickname + _(' is already in use.')
-                        self.nickname = self.last_nickname
+    def _client_system_message(self, client, message):
+        self.emit("system-message", message)
 
-                    if len(data.split(' ')) == 3 and 'NICK' in data.split(' '):
-                        # Any has changed nick
-                        last_nick = data[1:].split('!')[0]
-                        new_nick = data.split(' ')[-1][1:]
-                        message = last_nick + _(' has changed nick to ') + new_nick
+    def _client_user_message(self, client, nickname, channel, message):
+        self.emit("user-message", nickname, channel, message)
 
-                    if len(data.split(' ')) >= 4 and 'QUIT' in data.split(' '):
-                        nick = data[1:].split('!')[0]
-                        message = nick + _(' has withdrawn from the canal.')
+    def _client_nickname_changed(self, client, nick):
+        # TODO: send "user-nickname-changed" too
+        self.emit("nickname-changed", nick)
 
-                    if message:
-                        if message == self.nickname + _(' joined to ') + channel:
-                            self.emit('connected')
+    def _client_user_nickname_changed(self, client, old_nick, new_nick):
+        self.emit("user-nickname-changed", old_nick, new_nick)
 
-                        print '******** %s ********\n' % message
-                        self.emit('system-message', message)
+    def _client_user_joined(self, client, user, channel):
+        self.emit("user-joined", user, channel)
 
-    def send(self, msg):
-        # Any message
-        self.socket.send(msg + '\r\n')
+    def _client_left(self, client, user, channel):
+        self.emit("user-left", user, channel)
 
-    def say(self, msg):
-        # Speak with others members of the channel
-        self.send('PRIVMSG %s :%s' % (self.channel, msg))
+    def _client_quit(self, client, user, channel):
+        self.emit("user-quit", user, channel)
 
-    def perform(self):
-        print '******** Establishing contact with the server ********\n'
-        self.send('PRIVMSG R : Login <>')
-        self.send('MODE %s +x' % self.nickname)
-        self.send('JOIN %s' % self.channel)
-
-    def __send_connecting_error(self):
-        self.emit('system-message', G.CONNECTION_ERROR)
-
-        self.active = False
-
-    def close(self):
-        print '******** Closing contact with the server ********\n'
-        self.active = False
-        self.send('QUIT')
-        self.socket.close()
+    def _client_kicked(self, client, user, channel, kicker, message):
+        self.emit("user-kicked", user, channel, kicker, message)

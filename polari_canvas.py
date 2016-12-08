@@ -1,0 +1,168 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2014-2016, Cristian García <cristian99garcia@gmail.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+
+from new_channel_screen import NewChannelScreen
+from channels_listbox import ChannelsListBox
+from chat_box import ChatBox
+from consts import Screen
+from client import ClientFactory
+
+import gi
+gi.require_version("Gtk", "3.0")
+
+from gi.repository import Gtk
+from gi.repository import GObject
+
+
+class PolariCanvas(Gtk.VBox):
+
+    def __init__(self):
+        Gtk.VBox.__init__(self)
+
+        self.screen = None
+
+        self.factory = ClientFactory([])
+        self.factory.connect("joined", self._joined)
+        self.factory.connect("system-message", self._system_message)
+        self.factory.connect("user-message", self._user_message)
+        self.factory.connect("nickname-changed", self._nickname_changed)
+        self.factory.connect("user-nickname-changed", self._user_nickname_changed)
+
+        self.channel_screen = NewChannelScreen()
+        self.channel_screen.connect("log-in", self._log_in)
+        self.channel_screen.connect("new-channel", self._new_channel)
+        self.channel_screen.connect("cancel", self._screen_changed, Screen.CHAT)
+        self.chat_screen = Gtk.HBox()
+
+        self.channels_listbox = ChannelsListBox()
+        self.channels_listbox.connect("channel-selected", self._channel_selected)
+        self.channels_listbox.connect("channel-removed", self._channel_removed)
+        self.chat_screen.pack_start(self.channels_listbox, False, False, 0)
+
+        self.chat_box = ChatBox()
+        self.chat_box.connect("send-message", self.send_message)
+        self.chat_screen.pack_start(self.chat_box, True, True, 0)
+
+        self.set_screen(Screen.NEW_CHANNEL)
+
+    def set_screen(self, screen):
+        if screen == self.screen:
+            return
+
+        self.screen = screen
+
+        if self.screen == Screen.CHAT:
+            if self.channel_screen.get_parent() == self:
+                self.remove(self.channel_screen)
+
+            self.pack_start(self.chat_screen, True, True, 0)
+
+        elif self.screen == Screen.NEW_CHANNEL:
+            if self.chat_screen.get_parent() == self:
+                self.remove(self.chat_screen)
+
+            self.pack_start(self.channel_screen, True, True, 0)
+
+        self.show_all()
+
+    def send_message(self, widget, channel, message):
+        self.factory.client.msg(channel, message)
+
+    def _log_in(self, widget, nick, host, channel, port):
+        self.set_screen(Screen.CHAT)
+        self.chat_box.set_nickname(nick)
+        self.channel_screen.set_logged(True)
+
+        self.factory.protocol.nickname = nick
+        self.new_channel(channel)
+        self.factory.start_connection(host, port)
+
+    def _new_channel(self, widget, channel):
+        self.new_channel(channel)
+
+    def _channel_removed(self, widget, channel):
+        self.factory.remove_channel(channel)
+        self.chat_box.remove_channel(channel)
+
+        if len(self.factory.channels) == 0:
+            self.set_screen(Screen.NEW_CHANNEL)
+
+    def new_channel(self, channel):
+        self.set_screen(Screen.CHAT)
+
+        self.chat_box.add_channel(channel)
+        self.channels_listbox.add_channel(channel)
+        self.factory.add_channel(channel)
+        self.chat_box.switch_channel(channel)
+
+    def _channel_selected(self, listbox, channel):
+        self.chat_box.switch_channel(channel)
+
+    def _screen_changed(self, widget, screen):
+        self.set_screen(screen)
+
+    def _joined(self, factory, channel):
+        self.channels_listbox.change_spinner(channel, False)
+        self.chat_box.add_system_message(channel, "Joined to: %s" % channel)
+        self.chat_box.get_entry().set_sensitive(True)
+
+    def _system_message(self, factory, channel, message):
+        if channel == "ALLCHANNELS":
+            for channel in self.chat_box.channels:
+                self.chat_box.add_system_message(channel, message)
+
+        else:
+            self.chat_box.add_system_message(channel, message)
+
+    def _user_message(self, factory, nickname, channel, message):
+        ## TODO: Set on correct chat_box
+        self.chat_box.message_recived(channel, nickname, message)
+
+    def _nickname_changed(self, factory, nickname):
+        self.chat_box.set_nickname(nickname)
+
+    def _user_nickname_changed(self, factory, old_nick, new_nick):
+        self.chat_box.add_system_message(channel, "%s has changed nick to %s" % (old_nick, new_nick))
+
+
+if __name__ == "__main__":
+    def _quit(win):
+        from twisted.internet import reactor
+
+        Gtk.main_quit()
+        reactor.stop()
+
+    def _clicked(button, polari):
+        polari.set_screen(Screen.NEW_CHANNEL)
+
+    win = Gtk.Window()
+    win.set_title("Polari for Sugar")
+    win.connect("destroy", _quit)
+
+    polari = PolariCanvas()
+    win.add(polari)
+
+    button = Gtk.Button.new_with_label("Add channel")
+    button.connect("clicked", _clicked, polari)
+    polari.pack_end(button, False, False, 0)
+
+    win.show_all()
+
+    Gtk.main()
