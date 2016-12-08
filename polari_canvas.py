@@ -58,6 +58,7 @@ class PolariCanvas(Gtk.VBox):
 
         self.chat_box = ChatBox()
         self.chat_box.connect("send-message", self.send_message)
+        self.chat_box.connect("command", self.run_command)
         self.chat_screen.pack_start(self.chat_box, True, True, 0)
 
         self.set_screen(Screen.NEW_CHANNEL)
@@ -84,6 +85,15 @@ class PolariCanvas(Gtk.VBox):
 
     def send_message(self, widget, channel, message):
         self.factory.client.msg(channel, message)
+
+    def run_command(self, widget, channel, command, parameters=""):
+        if command == "/join":
+            for channel in parameters.split(" "):
+                if not channel.startswith("#"):
+                    channel = "#" + channel
+
+                if channel.strip() != "#":
+                    self.new_channel(channel)
 
     def _log_in(self, widget, nick, host, channel, port):
         self.set_screen(Screen.CHAT)

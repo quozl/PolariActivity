@@ -20,7 +20,7 @@
 
 from gettext import gettext as _
 
-from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, Color
+from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, CHAT_FONT, Color
 from utils import get_urls
 
 import gi
@@ -37,6 +37,7 @@ class ChatBox(Gtk.VBox):
         "nickname-changed": (GObject.SIGNAL_RUN_FIRST, None, [str]),
         "stop-widget": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
         "send-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, message
+        "command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),   # Channel, command, parameters
     }
 
     def __init__(self):
@@ -106,7 +107,7 @@ class ChatBox(Gtk.VBox):
         view.set_editable(False)
         view.set_cursor_visible(False)
         view.set_wrap_mode(Gtk.WrapMode.WORD)
-        view.modify_font(Pango.FontDescription("Monospace 12"))
+        view.modify_font(Pango.FontDescription(CHAT_FONT))
 
         return view
 
@@ -117,8 +118,15 @@ class ChatBox(Gtk.VBox):
     def send_message(self, widget):
         message = self.entry.get_text()
 
-        self.emit("send-message", self.current_channel, message)
-        self.add_message_to_view(self.current_channel, self.nick, message, force=True)
+        if not message.startswith("/"):
+            self.emit("send-message", self.current_channel, message)
+            self.add_message_to_view(self.current_channel, self.nick, message, force=True)
+
+        else:
+            command = message.split(" ")[0]
+            parameters = message[len(command):].strip()
+            self.emit("command", self.current_channel, command, parameters)
+
         self.entry.set_text("")
 
     def add_text_with_tag(self, channel, text, tag):

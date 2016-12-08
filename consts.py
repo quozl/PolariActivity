@@ -32,6 +32,9 @@ try:
 except ImportError:
     SUGAR = False
 
+
+CHAT_FONT = "Monospace 12"
+
 NICKNAME_USED = _(' is already in use.')
 LOST_CONNECTION = _('Lost lost conection with the server...')
 CONNECTION_ERROR = _('Error to connecting to the server... closing the socket.')
