@@ -65,7 +65,6 @@ class Client(irc.IRCClient, GObject.GObject):
         self.emit("user-message", channel, user.split("!")[0], msg)
 
     def nickChanged(self, nickname):
-        print "NICKCHANGED", nickname
         self.nickname = nickname
         self.emit("nickname-changed", nickname)
 

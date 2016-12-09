@@ -79,18 +79,22 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         self.nicknames.append(nickname)
         self.nicknames = sorted(self.nicknames, key=str.lower)
 
-        self.model.append([nickname])
-        #self.model.insert([nickname], self.nicknames.index(nickname))
+        self.model.insert(self.nicknames.index(nickname), [nickname])
         self.show_all()
 
     def remove_nickname(self, nickname):
-        self.model.remove(nickname)
+        iter = self.model.get_iter_first()
+        if self.model.get_value(iter, 0) == nickname:
+            self.model.remove_iter(iter)
+
+        else:
+            while self.model.iter_next(iter):
+                iter = self.model.iter_next(iter)
+                if self.model.get_value(iter, 0) == nickname:
+                    self.model.remove(iter)
+                    break
 
     def _button_release(self, widget, event):
-        ##selection = self.view.get_selection()
-        ##if selection == None:
-        ##    return False
-
         row = self.view.get_dest_row_at_pos(event.x, event.y)
         if row == None or event.button != 3:
             self.selected_nickname = None

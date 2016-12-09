@@ -136,7 +136,7 @@ class ChatBox(Gtk.VBox):
             return
 
         if self.scroll.get_child() != None:
-            self.scroll.remove(self.views[self.current_channel])
+            self.scroll.remove(self.scroll.get_child())
 
         if self.nicks_box.get_children() != []:
             self.nicks_box.remove(self.nicks_box.get_children()[0])
