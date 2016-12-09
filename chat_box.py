@@ -274,4 +274,5 @@ class ChatBox(Gtk.VBox):
                 self.remove_nickname(channel, nickname)
 
     def _query(self, widget, nickname):
-        self.emit("query", nickname)
+        if nickname != self.nickname:
+            self.emit("query", nickname)
