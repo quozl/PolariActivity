@@ -96,7 +96,7 @@ class NewChannelScreen(Gtk.EventBox):
         if not self.logged:
             self.form.pack_start(self.server, False, False, 5)
 
-        self.port = Field("Port", port or "8000")
+        self.port = Field("Port", port or "6667")
         self.port.entry.connect("changed", self.__text_changed)
         self.port.entry.connect("activate", self.send_data)
 
