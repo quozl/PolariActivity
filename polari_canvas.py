@@ -216,7 +216,7 @@ class PolariCanvas(Gtk.VBox):
             if nickname in nicknames:
                 self.chat_box.add_system_message(channel, "%s has quit. [%s]" % (nickname, message))
 
-        self.chat_box.remove_nickname(nickname)
+        self.chat_box.remove_nickname_from_all_channels(nickname)
 
     def _nicknames(self, factory, channel, nicknames):
         self.chat_box.set_nicknames(channel, nicknames.split(" "))

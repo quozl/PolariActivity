@@ -136,7 +136,7 @@ class ChatBox(Gtk.VBox):
             return
 
         if self.scroll.get_child() != None:
-            self.scroll.remove(self.scroll.get_child())
+            self.scroll.remove(self.view[self.current_channel])
 
         if self.nicks_box.get_children() != []:
             self.nicks_box.remove(self.nicks_box.get_children()[0])
@@ -268,7 +268,7 @@ class ChatBox(Gtk.VBox):
         self.nicks[channel].remove(nickname)
         self.nicks_listboxs[channel].remove_item(nickname)
 
-    def remove_nickname_form_all_channels(self, nickname):
+    def remove_nickname_from_all_channels(self, nickname):
         for channel in self.nicks.keys():
             if nickname in self.nicks[channel]:
                 self.remove_nickname(channel, nickname)
