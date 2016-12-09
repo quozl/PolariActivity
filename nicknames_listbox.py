@@ -24,65 +24,9 @@ import gi
 gi.require_version("Gtk", "3.0")
 
 from gi.repository import Gtk
+from gi.repository import Gdk
 from gi.repository import Pango
 from gi.repository import GObject
-
-
-class NicknameItem(Gtk.EventBox):
-
-    __gsignals__ = {
-        "selected": (GObject.SIGNAL_RUN_FIRST, None, []),
-        "query": (GObject.SIGNAL_RUN_FIRST, None, []),
-    }
-
-    def __init__(self, nickname):
-        Gtk.EventBox.__init__(self)
-
-        self.nickname = nickname
-        self.selected = False
-
-        self.connect("button-press-event", self._press)
-
-        self.hbox = Gtk.HBox()
-        self.add(self.hbox)
-
-        self.label = Gtk.Label(self.nickname)
-        self.label.modify_font(Pango.FontDescription("10"))
-        self.hbox.pack_start(self.label, False, False, 0)
-
-        self.menu = Gtk.Menu()
-
-        item = Gtk.MenuItem("Query")
-        item.connect("activate", self._query)
-        self.menu.append(item)
-
-    def _press(self, widget, event):
-        if event.button == 1 or event.button == 3:
-            if not self.selected:
-                self.emit("selected")
-                self.selected = True
-
-        if event.button == 3:
-            self.menu.show_all()
-            self.menu.popup(None, None, None, None, event.button, event.time)
-
-    def _query(self, item):
-        self.emit("query")
-
-    def set_selected(self, is_selected):
-        self.selected = is_selected
-        self.update()
-
-    def update(self):
-        if self.selected:
-            self.modify_bg(Gtk.StateType.NORMAL, Color.BLUE)
-
-        else:
-            if SUGAR:
-                self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
-
-            else:
-                self.modify_bg(Gtk.StateType.NORMAL, None)
 
 
 class NicknamesListBox(Gtk.ScrolledWindow):
@@ -94,50 +38,71 @@ class NicknamesListBox(Gtk.ScrolledWindow):
     def __init__(self):
         Gtk.ScrolledWindow.__init__(self)
 
-        self.items = []
+        self.nicknames = []
+        self.model = Gtk.ListStore(str)
+        self.selected_nickname = None
 
         self.set_size_request(150, 1)
 
-        self.vbox = Gtk.VBox()
-        self.add(self.vbox)
+        self.view = Gtk.TreeView()
+        self.view.set_model(self.model)
+        self.view.set_headers_visible(False)
+        self.view.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
+        self.view.connect("button-release-event", self._button_release)
+        self.add(self.view)
+
+        renderer = Gtk.CellRendererText()
+        column = Gtk.TreeViewColumn("Nickname", renderer, text=0)
+        self.view.append_column(column)
+
+        self.menu = Gtk.Menu()
+
+        item = Gtk.MenuItem("Query")
+        item.connect("activate", self._query)
+        self.menu.append(item)
 
     def set_list(self, nicknames):
         self.clear()
         nicknames.sort()
 
         for nick in nicknames:
-            self.add_item(nick)
+            self.add_nickname(nick)
 
     def clear(self):
-        while len(self.items) > 0:
-            for item in self.items:
-                self.remove(item)
-                self.items.remove(item)
+        while len(self.nicknames) > 0:
+            for item in self.nicknames:
+                self.nicknames.remove(item)
 
-    def add_item(self, nick):
-        sorted_list = [item.nickname for item in self.items]
-        sorted_list.append(nick)
-        sorted_list = sorted(sorted_list, key=str.lower)
+        self.model.clear()
 
-        item = NicknameItem(nick)
-        item.connect("selected", self.select_item)
-        item.connect("query", self._query)
-        self.vbox.pack_start(item, False, False, 0)
-        self.vbox.reorder_child(item, sorted_list.index(nick))
+    def add_nickname(self, nickname):
+        self.nicknames.append(nickname)
+        self.nicknames = sorted(self.nicknames, key=str.lower)
 
-        self.items.append(item)
+        self.model.append([nickname])
+        #self.model.insert([nickname], self.nicknames.index(nickname))
         self.show_all()
 
-    def remove_item(self, nick):
-        for item in self.items:
-            if item.nickname == nick:
-                self.vbox.remove(item)
-                self.items.remove(item)
-                break
+    def remove_nickname(self, nickname):
+        self.model.remove(nickname)
 
-    def select_item(self, item):
-        for i in self.items:
-            i.set_selected(i == item)
+    def _button_release(self, widget, event):
+        ##selection = self.view.get_selection()
+        ##if selection == None:
+        ##    return False
+
+        row = self.view.get_dest_row_at_pos(event.x, event.y)
+        if row == None or event.button != 3:
+            self.selected_nickname = None
+            return False
+
+        path = row[0]
+        iter = self.model.get_iter(path)
+        self.selected_nickname = self.model.get_value(iter, 0)
+
+        self.menu.show_all()
+        self.menu.popup(None, None, None, None, event.button, event.time)
 
     def _query(self, item):
-        self.emit("query", item.nickname)
+        if self.selected_nickname != None:
+            self.emit("query", self.selected_nickname)
