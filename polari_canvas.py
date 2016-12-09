@@ -219,7 +219,6 @@ class PolariCanvas(Gtk.VBox):
         self.chat_box.remove_nickname_from_all_channels(nickname)
 
     def _nicknames(self, factory, channel, nicknames):
-        print "_nicknames", channel, nicknames
         self.chat_box.set_nicknames(channel, nicknames.split(" "))
 
 
