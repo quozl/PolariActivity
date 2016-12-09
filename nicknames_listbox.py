@@ -80,6 +80,7 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         self.nicknames = sorted(self.nicknames, key=str.lower)
 
         self.model.insert(self.nicknames.index(nickname), [nickname])
+        print "add_nickname", nickname
         self.show_all()
 
     def remove_nickname(self, nickname):

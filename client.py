@@ -30,6 +30,7 @@ from twisted.words.protocols import irc
 from twisted.internet import reactor
 from twisted.internet import protocol
 from twisted.internet import ssl
+from twisted.internet import defer
 
 from gi.repository import GObject
 
@@ -54,12 +55,16 @@ class Client(irc.IRCClient, GObject.GObject):
     def start_gobject(self):
         GObject.GObject.__init__(self)
 
+        self.__who_reply = []
+        self.__who_channel = None
+
     def signedOn(self):
         for c in self.factory.channels:
             self.join(c)
 
     def joined(self, channel):
         self.emit("joined", channel)
+        self.who(channel)
 
     def privmsg(self, user, channel, msg):
         self.emit("user-message", channel, user.split("!")[0], msg)
@@ -94,11 +99,28 @@ class Client(irc.IRCClient, GObject.GObject):
     def set_nickname(self, new_nick):
         self.setNick(new_nick)
 
-    def irc_RPL_NAMREPLY(self, prefix, params):
-        channel = params[2].lower()
-        nicklist = params[3]
+    def who(self, channel):
+        self.__who_reply = []
+        self.__who_channel = channel
+        self.sendLine("WHO %s" % channel)
 
-        self.emit("nicknames-list", channel, nicklist)
+    def irc_RPL_WHOREPLY(self, *nargs):
+        self.__who_reply.append(nargs[1][5])
+ 
+    def irc_RPL_ENDOFWHO(self, *nargs):
+        nicknames = ""
+        for nick in self.__who_reply:
+            nicknames += nick + " "
+
+        nicknames = nicknames[:-1]
+
+        self.emit("nicknames-list", self.__who_channel, nicknames)
+ 
+        self.__who_reply = []
+        self.__who_channel = None
+
+    def irc_unknown(self, prefix, command, params):
+        pass
 
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):

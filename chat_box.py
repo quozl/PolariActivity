@@ -256,6 +256,7 @@ class ChatBox(Gtk.VBox):
         return self.entry
 
     def set_nicknames(self, channel, nicknames):
+        print "set_nicknames", channel, channel in self.channels, nicknames
         if channel in self.channels:  # twisted factory add a hash to nicks too
             self.nicks[channel] = nicknames
             self.nicks_listboxs[channel].set_list(nicknames)
