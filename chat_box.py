@@ -23,7 +23,7 @@ from gettext import gettext as _
 from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, CHAT_FONT, Color, \
                    Key
 
-from utils import get_urls
+from utils import get_urls, beep
 from nicknames_listbox import NicknamesListBox
 
 import gi
@@ -207,6 +207,7 @@ class ChatBox(Gtk.VBox):
 
         if self.last_nick[channel] != self.nick:
             self.search_and_mark(channel, self.nick, end, "mention")
+            beep()
 
         offset = end.get_offset()
 

@@ -51,3 +51,7 @@ def parse_irc(msg, server):
     
     # note: this sucks and makes very little sense, but it matches the BNF
     #       as far as we've tested, which seems to be the goal
+
+
+def beep():
+    print "\a"
