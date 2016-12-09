@@ -58,6 +58,7 @@ class Client(irc.IRCClient, GObject.GObject):
         "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Nickname, Message
         "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, Message
         "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
+        "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
     }
 
     def start_gobject(self):
@@ -118,6 +119,9 @@ class Client(irc.IRCClient, GObject.GObject):
         self.nickname = new_nick
         self.setNick(new_nick)
 
+    def get_nickname(self):
+        return self.nickname
+
     def who(self, channel):
         self.__who_reply = []
         self.__who_channel = channel
@@ -138,8 +142,25 @@ class Client(irc.IRCClient, GObject.GObject):
         self.__who_reply = []
         self.__who_channel = None
 
+    def irc_PRIVMSG(self, prefix, params):
+        channel = params[0]
+        nickname = prefix.split("!")[0]
+        d = irc.ctcpExtract(params[1])
+        if d["extended"] != []:
+            message = d["extended"][0][1]
+            self.emit("me-command", channel, nickname, message)
+
+        else:
+            irc.IRCClient.irc_PRIVMSG(self, prefix, params)
+
     def irc_unknown(self, prefix, command, params):
         pass
+
+    def actions(self, *args):
+        print "actions", args
+
+    def me(self, channel, message):
+        self.describe(channel, message)
 
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):
@@ -157,6 +178,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Nickname, Message
         "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, Message
         "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
+        "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
     }
 
     def __init__(self, channels):
@@ -180,6 +202,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         self.client.connect("user-quit", self._client_quit)
         self.client.connect("user-kicked", self._client_kicked)
         self.client.connect("nicknames-list", self._client_nicknames_list)
+        self.client.connect("me-command", self._client_me_command)
 
         return self.client
 
@@ -240,3 +263,6 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
     def _client_nicknames_list(self, client, channel, nicknames):
         self.emit("nicknames-list", channel, nicknames)
+
+    def _client_me_command(self, client, channel, nickname, message):
+        self.emit("me-command", channel, nickname, message)

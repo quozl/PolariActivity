@@ -48,6 +48,7 @@ class PolariCanvas(Gtk.VBox):
         self.factory.connect("user-left", self._user_left)
         self.factory.connect("user-quit", self._user_quit)
         self.factory.connect("nicknames-list", self._nicknames)
+        self.factory.connect("me-command", self._me_command)
 
         self.channel_screen = NewChannelScreen()
         self.channel_screen.connect("log-in", self._log_in)
@@ -118,13 +119,17 @@ class PolariCanvas(Gtk.VBox):
             message = parameters[len(nickname) + 1:]
             self.new_channel(nickname, add_hash=False)
             self.send_message(nickname, message)
-            self.chat_box.add_message_to_view(nickname, self.factory.protocol.nickname, message, force=True)
+            self.chat_box.add_message_to_view(nickname, self.factory.client.get_nickname(), message, force=True)
 
         elif command == "/nick":
             self.change_nickname(parameters)
 
         elif command == "/names":
-            self.protocol.client.ask_for_names(channel)
+            self.factory.protocol.ask_for_names(channel)
+
+        elif command == "/me":
+            self.factory.client.me(channel, parameters)
+            self._me_command(None, channel, self.factory.client.get_nickname(), parameters)
 
     def _log_in(self, widget, nick, host, channel, port):
         self.set_screen(Screen.CHAT)
@@ -182,10 +187,10 @@ class PolariCanvas(Gtk.VBox):
             self.chat_box.add_system_message(channel, message)
 
     def _user_message(self, factory, channel, nickname, message):
-        if channel == self.factory.protocol.nickname and nickname not in self.chat_box.channels:
+        if channel == self.factory.client.get_nickname() and nickname not in self.chat_box.channels:
             self.new_channel(nickname, add_hash=False, show=nickname)
 
-        if channel != self.factory.protocol.nickname:  # Channel message
+        if channel != self.factory.client.get_nickname():  # Channel message
             self.chat_box.message_recived(channel, nickname, message)
 
         else:  # Direct message
@@ -223,6 +228,9 @@ class PolariCanvas(Gtk.VBox):
 
     def _nicknames(self, factory, channel, nicknames):
         self.chat_box.set_nicknames(channel, nicknames.split(" "))
+
+    def _me_command(self, factory, channel, nickname, message):
+        self.chat_box.add_system_message(channel, " * %s %s" % (nickname, message))
 
 
 if __name__ == "__main__":
