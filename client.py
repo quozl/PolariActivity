@@ -18,6 +18,8 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+import random
+
 from twisted.internet.error import ReactorAlreadyInstalledError
 
 try:
@@ -35,9 +37,15 @@ from twisted.internet import defer
 from gi.repository import GObject
 
 
+def get_random_nickname():
+    number = str(random.randint(0, 9999))
+    return "Guest_" + "0" * (4 - len(number)) + number
+
+
 class Client(irc.IRCClient, GObject.GObject):
 
-    nickname = "nickname"
+    nickname = get_random_nickname()
+    first_nickname = nickname
 
     __gsignals__ = {
         "joined": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
@@ -78,8 +86,18 @@ class Client(irc.IRCClient, GObject.GObject):
         new_nick = params[0]
         self.emit("user-nickname-changed", old_nick, new_nick)
 
+    def irc_ERR_NICKNAMEINUSE(self, prefix, params):
+        if params[0] != "*":
+            self.emit("system-message", "ALLCHANNELS", "Nickname is already in use: %s" % params[1])
+
+        else:
+            self.nickname = get_random_nickname()
+            self.first_nickname = self.nickname
+            self.set_nickname(self.nickname)
+            self.emit("nickname-changed", self.nickname)
+
     def alterCollidedNick(self, nickname):
-        return nickname + "_"
+        return (nickname + "^")
 
     def userJoined(self, nickname, channel):
         self.emit("user-joined", channel, nickname)
@@ -97,6 +115,7 @@ class Client(irc.IRCClient, GObject.GObject):
         self.leave(channel, "")
 
     def set_nickname(self, new_nick):
+        self.nickname = new_nick
         self.setNick(new_nick)
 
     def who(self, channel):
@@ -194,8 +213,8 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
     def _client_joined(self, client, channel):
         self.emit("joined", channel)
 
-    def _client_system_message(self, client, message):
-        self.emit("system-message", message)
+    def _client_system_message(self, client, channel, message):
+        self.emit("system-message", channel, message)
 
     def _client_user_message(self, client, channel, nickname, message):
         self.emit("user-message", channel, nickname, message)
