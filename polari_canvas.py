@@ -202,6 +202,9 @@ class PolariCanvas(Gtk.VBox):
                 self.chat_box.remove_nickname(channel, old_nick)
                 self.chat_box.add_nickname(channel, new_nick)
 
+                if old_nick == self.chat_box.nick:
+                    self.chat_box.set_nickname(new_nick)
+
     def _user_joined(self, factory, channel, nickname):
         self.chat_box.add_system_message(channel, "%s joined." % nickname)
         self.chat_box.add_nickname(channel, nickname)
