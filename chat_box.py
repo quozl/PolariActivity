@@ -250,8 +250,8 @@ class ChatBox(Gtk.VBox):
         buffer.create_tag("mention", foreground=Color.MENTION_TAG)
         buffer.create_tag("sys-msg", foreground=Color.SYS_MESSAGE_TAG)
         buffer.create_tag("url", underline=Pango.Underline.SINGLE, foreground="#0000FF")
-        buffer.create_tag("message1", foreground=Color.MESSAGE_BG_TAG1)
-        buffer.create_tag("message2", foreground=Color.MESSAGE_BG_TAG2)
+        buffer.create_tag("message1") #, foreground=Color.MESSAGE_BG_TAG1)
+        buffer.create_tag("message2") #, foreground=Color.MESSAGE_BG_TAG2)
         ##if not SUGAR:
         ##    buffer.create_tag("message", background=Color.MESSAGE_TAG)
 
