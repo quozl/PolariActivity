@@ -61,6 +61,8 @@ class Color:
     NICK_TAG = None
     MENTION_TAG = "#FF2020"
     MESSAGE_TAG = None
+    MESSAGE_BG_TAG1 = "#000000"
+    MESSAGE_BG_TAG2 = "#666666"
     SYS_MESSAGE_TAG = None
     URL_TAG = "#0000FF"
 
