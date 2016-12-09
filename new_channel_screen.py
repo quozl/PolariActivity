@@ -33,7 +33,7 @@ class Field(Gtk.HBox):
     def __init__(self, label, prepopulate):
         Gtk.HBox.__init__(self)
 
-        self.set_size_request(600, -1)
+        self.set_size_request(600, 1)
 
         label = Gtk.Label(label)
         label.modify_fg(Gtk.StateType.NORMAL, Color.GREY)

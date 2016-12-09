@@ -20,13 +20,17 @@
 
 from gettext import gettext as _
 
-from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, CHAT_FONT, Color
+from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, CHAT_FONT, Color, \
+                   Key
+
 from utils import get_urls
+from nicknames_listbox import NicknamesListBox
 
 import gi
 gi.require_version("Gtk", "3.0")
 
 from gi.repository import Gtk
+from gi.repository import Gdk
 from gi.repository import Pango
 from gi.repository import GObject
 
@@ -38,6 +42,7 @@ class ChatBox(Gtk.VBox):
         "send-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, message
         "command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),   # Channel, command, parameters
         "change-nickname": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # New nickname
+        "query": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Nickname
     }
 
     def __init__(self):
@@ -46,15 +51,26 @@ class ChatBox(Gtk.VBox):
         self.nick = None
         self.current_channel = None
         self.channels = [ ]
-        self.last_nick = { } # channel: str
-        self.views = { } # channel: GtkTextView
+        self.last_nick = { }  # channel: str
+        self.nicks = { }  # channel: list
+        self.views = { }  # channel: GtkTextView
         self.buffers = { }  # channel: GtkTextBuffer
+        self.nicks_listboxs = { }  # channel: NicknamesListBox
 
         self.set_size_request(400, -1)
         self.set_margin_left(10)
+        self.add_events(Gdk.EventMask.KEY_PRESS_MASK)
+
+        self.connect("key-press-event", self.__key_press_cb)
+
+        self.hbox = Gtk.HBox()
+        self.pack_start(self.hbox, True, True, 5)
 
         self.scroll = Gtk.ScrolledWindow()
-        self.pack_start(self.scroll, True, True, 5)
+        self.hbox.pack_start(self.scroll, True, True, 0)
+
+        self.nicks_box = Gtk.VBox()
+        self.hbox.pack_end(self.nicks_box, False, False, 0)
 
         hbox = Gtk.HBox()
         hbox.set_margin_left(10)
@@ -76,6 +92,20 @@ class ChatBox(Gtk.VBox):
 
         self.set_entries_theme()
 
+    def __key_press_cb(self, widget, event):
+        if event.keyval == Key.TAB and self.entry.has_focus():
+            pos = self.entry.props.cursor_position
+            text = self.entry.get_text()[:pos].split(" ")[-1]
+
+            for nick in self.nicks[self.current_channel]:
+                if nick.startswith(text):
+                    # TODO: Autocomplete
+                    pass
+
+            return True
+
+        return False
+
     def _change_nickname(self, widget):
         self.emit("change-nickname", self.nicker.get_text())
         self.nicker.set_text("")
@@ -86,6 +116,9 @@ class ChatBox(Gtk.VBox):
             self.views[channel] = self.make_textview_for_channel(channel)
             self.buffers[channel] = self.views[channel].get_buffer()
             self.last_nick[channel] = None
+            self.nicks[channel] = []
+            self.nicks_listboxs[channel] = NicknamesListBox()
+            self.nicks_listboxs[channel].connect("query", self._query)
 
             self.create_tags(channel)
 
@@ -95,6 +128,8 @@ class ChatBox(Gtk.VBox):
             self.channels.remove(channel)
             self.views.pop(channel)
             self.buffers.pop(channel)
+            self.nicks.pop(channel)
+            self.nicks_listboxs.pop(channel)
 
     def switch_channel(self, channel):
         if channel == self.current_channel:
@@ -103,8 +138,15 @@ class ChatBox(Gtk.VBox):
         if self.scroll.get_child() != None:
             self.scroll.remove(self.scroll.get_child())
 
+        if self.nicks_box.get_children() != []:
+            self.nicks_box.remove(self.nicks_box.get_children()[0])
+
         self.current_channel = channel
         self.scroll.add(self.views[self.current_channel])
+
+        if channel.startswith("#"):  # Is a channel, not a nickname
+            self.nicks_box.pack_start(self.nicks_listboxs[channel], True, True, 0)
+
         self.show_all()
 
     def make_textview_for_channel(self, channel):
@@ -212,3 +254,24 @@ class ChatBox(Gtk.VBox):
 
     def get_entry(self):
         return self.entry
+
+    def set_nicknames(self, channel, nicknames):
+        if channel in self.channels:  # twisted factory add a hash to nicks too
+            self.nicks[channel] = nicknames
+            self.nicks_listboxs[channel].set_list(nicknames)
+
+    def add_nickname(self, channel, nickname):
+        self.nicks[channel].append(nickname)
+        self.nicks_listboxs[channel].add_item(nickname)
+
+    def remove_nickname(self, channel, nickname):
+        self.nicks[channel].remove(nickname)
+        self.nicks_listboxs[channel].remove_item(nickname)
+
+    def remove_nickname_form_all_channels(self, nickname):
+        for channel in self.nicks.keys():
+            if nickname in self.nicks[channel]:
+                self.remove_nickname(channel, nickname)
+
+    def _query(self, widget, nickname):
+        self.emit("query", nickname)

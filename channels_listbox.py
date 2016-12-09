@@ -18,7 +18,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-from consts import Color
+from consts import Color, SUGAR
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -31,8 +31,8 @@ from gi.repository import GObject
 class ChannelItem(Gtk.EventBox):
 
     __gsignals__ = {
-        'selected': (GObject.SIGNAL_RUN_FIRST, None, []),
-        'removed': (GObject.SIGNAL_RUN_FIRST, None, []),
+        "selected": (GObject.SIGNAL_RUN_FIRST, None, []),
+        "removed": (GObject.SIGNAL_RUN_FIRST, None, []),
     }
 
     def __init__(self, channel, show=None):
@@ -41,15 +41,15 @@ class ChannelItem(Gtk.EventBox):
         self.selected = False
         self.channel = channel
 
-        self.set_size_request(-1, 30)
+        self.set_size_request(1, 30)
         self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
-        self.connect('button-press-event', self._press)
+        self.connect("button-press-event", self._press)
 
         self.hbox = Gtk.HBox()
         self.add(self.hbox)
 
         self.label = Gtk.Label(show if show else channel)
-        self.label.modify_font(Pango.FontDescription('15'))
+        self.label.modify_font(Pango.FontDescription("15"))
         self.label.set_margin_left(10)
         self.hbox.pack_start(self.label, False, False, 0)
 
@@ -57,14 +57,14 @@ class ChannelItem(Gtk.EventBox):
         self.hbox.pack_end(self.spinner, False, False, 0)
 
         self.button = Gtk.Button.new_from_icon_name(Gtk.STOCK_REMOVE, Gtk.IconSize.BUTTON)
-        self.button.connect('clicked', lambda w: self.emit('removed'))
+        self.button.connect("clicked", lambda w: self.emit("removed"))
 
         self.start_spinner()
 
     def _press(self, widget, event):
         if event.button == 1:
             if not self.selected:
-                self.emit('selected')
+                self.emit("selected")
                 self.selected = True
 
     def set_selected(self, is_selected):
@@ -79,7 +79,11 @@ class ChannelItem(Gtk.EventBox):
             self.modify_bg(Gtk.StateType.NORMAL, Color.BLUE)
 
         else:
-            self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
+            if SUGAR:
+                self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
+
+            else:
+                self.modify_bg(Gtk.StateType.NORMAL, None)
 
     def start_spinner(self):
         if self.button.get_parent() == self.hbox:
@@ -116,14 +120,16 @@ class ChannelsListBox(Gtk.ScrolledWindow):
         self.vbox = Gtk.VBox()
 
         self.set_size_request(250, -1)
-        self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
+
+        if SUGAR:
+            self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
 
         self.add(self.vbox)
 
     def add_channel(self, channel, show=None):
         item = ChannelItem(channel, show=None)
-        item.connect('selected', self.select_item)
-        item.connect('removed', self.remove_item)
+        item.connect("selected", self.select_item)
+        item.connect("removed", self.remove_item)
         self.vbox.pack_start(item, False, False, 0)
 
         self.items.append(item)
@@ -131,6 +137,7 @@ class ChannelsListBox(Gtk.ScrolledWindow):
         self.show_all()
 
     def remove_item(self, item):
+        selected = item.selected
         idx = self.items.index(item)
         self.items.remove(item)
         self.vbox.remove(item)
@@ -141,7 +148,7 @@ class ChannelsListBox(Gtk.ScrolledWindow):
         if idx > 0:
             idx -= 1
 
-        if self.items:
+        if self.items and selected:
             self.select_item(self.items[idx])
 
     def select_item(self, item):

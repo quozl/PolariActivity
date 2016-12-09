@@ -48,6 +48,7 @@ class Client(irc.IRCClient, GObject.GObject):
         "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nickname
         "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Nickname, Message
         "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, Message
+        "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
     }
 
     def start_gobject(self):
@@ -94,9 +95,11 @@ class Client(irc.IRCClient, GObject.GObject):
     def set_nickname(self, new_nick):
         self.setNick(new_nick)
 
-    #def dataReceived(self, data):
-    #    print "dataReceived", data
-    #    pass
+    def irc_RPL_NAMREPLY(self, prefix, params):
+        channel = params[2].lower()
+        nicklist = params[3]
+
+        self.emit("nicknames-list", channel, nicklist)
 
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):
@@ -112,7 +115,8 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         "user-joined": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nickname
         "user-left": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nickname
         "user-quit": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Nickname, Message
-        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, message
+        "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, Message
+        "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
     }
 
     def __init__(self, channels):
@@ -135,6 +139,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         self.client.connect("user-left", self._client_left)
         self.client.connect("user-quit", self._client_quit)
         self.client.connect("user-kicked", self._client_kicked)
+        self.client.connect("nicknames-list", self._client_nicknames_list)
 
         return self.client
 
@@ -192,3 +197,6 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
     def _client_kicked(self, client, channel, nickname, kicker, message):
         self.emit("user-kicked", channel, nickname, kicker, message)
+
+    def _client_nicknames_list(self, client, channel, nicknames):
+        self.emit("nicknames-list", channel, nicknames)

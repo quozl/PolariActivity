@@ -79,3 +79,7 @@ class IRCState:
     CONNECTING = 1
     INITIALIZING = 2
     CONNECTED = 3
+
+
+class Key:
+    TAB = 65289

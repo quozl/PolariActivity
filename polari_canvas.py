@@ -47,6 +47,7 @@ class PolariCanvas(Gtk.VBox):
         self.factory.connect("user-joined", self._user_joined)
         self.factory.connect("user-left", self._user_left)
         self.factory.connect("user-quit", self._user_quit)
+        self.factory.connect("nicknames-list", self._nicknames)
 
         self.channel_screen = NewChannelScreen()
         self.channel_screen.connect("log-in", self._log_in)
@@ -63,6 +64,7 @@ class PolariCanvas(Gtk.VBox):
         self.chat_box.connect("send-message", self._send_message)
         self.chat_box.connect("command", self.run_command)
         self.chat_box.connect("change-nickname", self._change_nickname)
+        self.chat_box.connect("query", self._query)
         self.chat_screen.pack_start(self.chat_box, True, True, 0)
 
         self.set_screen(Screen.NEW_CHANNEL)
@@ -99,6 +101,12 @@ class PolariCanvas(Gtk.VBox):
     def change_nickname(self, new_nickname):
         self.factory.client.set_nickname(new_nickname)
 
+    def _query(self, widget, nickname):
+        self.query(nickname)
+
+    def query(self, nickname):
+        self.new_channel(nickname, add_hash=False)
+
     def run_command(self, widget, channel, command, parameters=""):
         if command == "/join":
             for channel in parameters.split(" "):
@@ -114,6 +122,9 @@ class PolariCanvas(Gtk.VBox):
 
         elif command == "/nick":
             self.change_nickname(parameters)
+
+        elif command == "/names":
+            self.protocol.client.ask_for_names(channel)
 
     def _log_in(self, widget, nick, host, channel, port):
         self.set_screen(Screen.CHAT)
@@ -184,20 +195,31 @@ class PolariCanvas(Gtk.VBox):
         self.chat_box.set_nickname(nickname)
 
     def _user_nickname_changed(self, factory, old_nick, new_nick):
-        # TODO: show message only in connecteds channels
         for channel in self.chat_box.channels:
-            self.chat_box.add_system_message(channel, "%s has changed nick to %s" % (old_nick, new_nick))
+            nicknames = self.chat_box.nicks[channel]
+            if old_nick in nicknames:
+                self.chat_box.add_system_message(channel, "%s has changed nick to %s" % (old_nick, new_nick))
+                self.chat_box.remove_nickname(channel, old_nick)
+                self.chat_box.add_nickname(channel, new_nick)
 
     def _user_joined(self, factory, channel, nickname):
         self.chat_box.add_system_message(channel, "%s joined." % nickname)
+        self.chat_box.add_nickname(channel, nickname)
 
     def _user_left(self, factory, channel, nickname):
         self.chat_box.add_system_message(channel, "%s has left." % nickname)
+        self.chat_box.remove_nickname(channel, nickname)
 
     def _user_quit(self, factory, nickname, message):
-        # TODO: show message only in connecteds channels
         for channel in self.chat_box.channels:
-            self.chat_box.add_system_message(channel, "%s has quit. [%s]" % (nickname, message))
+            nicknames = self.chat_box.nicks[channel]
+            if nickname in nicknames:
+                self.chat_box.add_system_message(channel, "%s has quit. [%s]" % (nickname, message))
+
+        self.chat_box.remove_nickname(nickname)
+
+    def _nicknames(self, factory, channel, nicknames):
+        self.chat_box.set_nicknames(channel, nicknames.split(" "))
 
 
 if __name__ == "__main__":
