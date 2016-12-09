@@ -207,7 +207,6 @@ class ChatBox(Gtk.VBox):
 
         if self.last_nick[channel] != self.nick:
             self.search_and_mark(channel, self.nick, end, "mention")
-            beep()
 
         offset = end.get_offset()
 
@@ -223,6 +222,9 @@ class ChatBox(Gtk.VBox):
             match_start, match_end = match
             self.buffers[channel].apply_tag_by_name(tag, match_start, match_end)
             self.search_and_mark(channel, text, match_end, tag)
+
+            if tag == "mention":
+                beep()
 
     def message_recived(self, channel, nick, message):
         self.add_message_to_view(channel, nick, message)
@@ -246,17 +248,17 @@ class ChatBox(Gtk.VBox):
 
     def create_tags(self, channel):
         buffer = self.buffers[channel]
+        message1 = buffer.create_tag("message1", foreground=Color.MESSAGE_BG_TAG1)
+        message2 = buffer.create_tag("message2", foreground=Color.MESSAGE_BG_TAG2)
         buffer.create_tag("nick", foreground=Color.NICK_TAG)
-        buffer.create_tag("mention", foreground=Color.MENTION_TAG)
+        mention = buffer.create_tag("mention", foreground=Color.MENTION_TAG)
         buffer.create_tag("sys-msg", foreground=Color.SYS_MESSAGE_TAG)
-        buffer.create_tag("url", underline=Pango.Underline.SINGLE, foreground="#0000FF")
-        buffer.create_tag("message1") #, foreground=Color.MESSAGE_BG_TAG1)
-        buffer.create_tag("message2") #, foreground=Color.MESSAGE_BG_TAG2)
-        ##if not SUGAR:
-        ##    buffer.create_tag("message", background=Color.MESSAGE_TAG)
+        url = buffer.create_tag("url", underline=Pango.Underline.SINGLE, foreground="#0000FF")
 
-        ##else:
-        ##    buffer.create_tag("message")
+        mention.set_priority(2)
+        url.set_priority(2)
+        message1.set_priority(1)
+        message1.set_priority(1)
 
     def get_entry(self):
         return self.entry
