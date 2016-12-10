@@ -53,7 +53,7 @@ ALL_CHANNELS = "ALLCHANNELS"
 DEFAULT_NICKNAME = "Nickname"
 DEFAULT_SERVER = "irc.freenode.net"
 DEFAULT_PORT = "6667"
-DEFAULT_CHANNEL = "#cristian-test"  # "#sugar"
+DEFAULT_CHANNEL = "#sugar"
 
 
 class Screen:
