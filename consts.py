@@ -47,7 +47,12 @@ CONNECTION_ERROR = _('Error to connecting to the server... closing the socket.')
 ALERT_TITLE = _('You already have a session on this host with this channel and whit this nickname.')
 ALERT_MSG = _('Automatically is selected session you try to create.')
 
-STATUS_CHANNEL = "status status status"
+STATUS_CHANNEL = "status.polari"  # Users nicknames can't has a "."
+
+DEFAULT_NICKNAME = "Nickname"
+DEFAULT_SERVER = "irc.freenode.net"
+DEFAULT_PORT = "6667"
+DEFAULT_CHANNEL = "#sugar"
 
 
 class Screen:
@@ -87,3 +92,9 @@ class IRCState:
 
 class Key:
     TAB = 65289
+    ESCAPE = 65307
+
+
+class TopicLabelMode:
+    SHOWING = 0
+    EDITING = 1

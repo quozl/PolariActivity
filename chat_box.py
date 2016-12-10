@@ -25,6 +25,7 @@ from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, CHAT_FONT, Color, \
 
 from utils import get_urls, beep
 from nicknames_listbox import NicknamesListBox
+from topic_label import TopicLabel
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -43,6 +44,7 @@ class ChatBox(Gtk.VBox):
         "command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),   # Channel, command, parameters
         "change-nickname": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # New nickname
         "query": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Nickname
+        "change-topic": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Topic
     }
 
     def __init__(self):
@@ -56,6 +58,7 @@ class ChatBox(Gtk.VBox):
         self.views = { }  # channel: GtkTextView
         self.buffers = { }  # channel: GtkTextBuffer
         self.nicks_listboxs = { }  # channel: NicknamesListBox
+        self.topic_labels = { }  # channel: TopicLabel
 
         self._last_tag = "message2"
 
@@ -65,14 +68,21 @@ class ChatBox(Gtk.VBox):
 
         self.connect("key-press-event", self.__key_press_cb)
 
-        self.hbox = Gtk.HBox()
-        self.pack_start(self.hbox, True, True, 5)
+        vbox = Gtk.VBox()
+        self.pack_start(vbox, True, True, 0)
+
+        self.topic_box = Gtk.HBox()
+        self.topic_box.set_size_request(1, 35)
+        vbox.pack_start(self.topic_box, False, False, 0)
+
+        hbox = Gtk.HBox()
+        vbox.pack_start(hbox, True, True, 5)
 
         self.scroll = Gtk.ScrolledWindow()
-        self.hbox.pack_start(self.scroll, True, True, 0)
+        hbox.pack_start(self.scroll, True, True, 0)
 
         self.nicks_box = Gtk.VBox()
-        self.hbox.pack_end(self.nicks_box, False, False, 0)
+        hbox.pack_end(self.nicks_box, False, False, 0)
 
         hbox = Gtk.HBox()
         hbox.set_margin_left(10)
@@ -127,6 +137,9 @@ class ChatBox(Gtk.VBox):
             self.nicks_listboxs[channel] = NicknamesListBox()
             self.nicks_listboxs[channel].connect("query", self._query)
 
+            self.topic_labels[channel] = TopicLabel()
+            self.topic_labels[channel].connect("change-topic", self._change_topic)
+
             self.create_tags(channel)
 
     def remove_channel(self, channel):
@@ -137,10 +150,14 @@ class ChatBox(Gtk.VBox):
             self.buffers.pop(channel)
             self.nicks.pop(channel)
             self.nicks_listboxs.pop(channel)
+            self.topic_labels.pop(channel)
 
     def switch_channel(self, channel):
         if channel == self.current_channel:
             return
+
+        if self.topic_box.get_children() != []:
+            self.topic_box.remove(self.topic_box.get_children()[0])
 
         if self.scroll.get_child() != None:
             self.scroll.remove(self.scroll.get_child())
@@ -153,6 +170,7 @@ class ChatBox(Gtk.VBox):
 
         if channel.startswith("#"):  # Is a channel, not a nickname
             self.nicks_box.pack_start(self.nicks_listboxs[channel], True, True, 0)
+            self.topic_box.pack_start(self.topic_labels[self.current_channel], True, True, 0)
 
         self.show_all()
 
@@ -281,6 +299,10 @@ class ChatBox(Gtk.VBox):
         self.nicks[channel].remove(nickname)
         self.nicks_listboxs[channel].remove_nickname(nickname)
 
+    def set_topic(self, channel, topic):
+        if channel in self.channels:
+            self.topic_labels[channel].set_topic(topic)
+
     def remove_nickname_from_all_channels(self, nickname):
         for channel in self.nicks.keys():
             if nickname in self.nicks[channel]:
@@ -289,3 +311,6 @@ class ChatBox(Gtk.VBox):
     def _query(self, widget, nickname):
         if nickname != self.nick:
             self.emit("query", nickname)
+
+    def _change_topic(self, widget, topic):
+        self.emit("change-topic", self.current_channel, topic)

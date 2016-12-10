@@ -51,6 +51,7 @@ class PolariCanvas(Gtk.VBox):
         self.factory.connect("nicknames-list", self._nicknames)
         self.factory.connect("me-command", self._me_command)
         self.factory.connect("status-message", self._status_message)
+        self.factory.connect("topic-changed", self._topic_changed)
 
         self.channel_screen = NewChannelScreen()
         self.channel_screen.connect("log-in", self._log_in)
@@ -68,6 +69,7 @@ class PolariCanvas(Gtk.VBox):
         self.chat_box.connect("command", self.run_command)
         self.chat_box.connect("change-nickname", self._change_nickname)
         self.chat_box.connect("query", self._query)
+        self.chat_box.connect("change-topic", self._change_topic)
         self.chat_screen.pack_start(self.chat_box, True, True, 0)
 
         self.set_screen(Screen.NEW_CHANNEL)
@@ -110,6 +112,12 @@ class PolariCanvas(Gtk.VBox):
     def query(self, nickname):
         self.new_channel(nickname, add_hash=False)
 
+    def _change_topic(self, widget, channel, topic):
+        self.change_topic(channel, topic)
+
+    def change_topic(self, channel, topic):
+        self.factory.client.topic(channel, topic)
+
     def run_command(self, widget, channel, command, parameters=""):
         if command == "/join":
             for channel in parameters.split(" "):
@@ -150,6 +158,10 @@ class PolariCanvas(Gtk.VBox):
         elif command == "/me":
             self.factory.client.me(channel, parameters)
             self._me_command(None, channel, self.factory.client.get_nickname(), parameters)
+
+        elif command == "/topic":
+            new_topic = parameters
+            self.change_topic(channel, new_topic)
 
     def _log_in(self, widget, nick, host, channel, port):
         self.set_screen(Screen.CHAT)
@@ -261,6 +273,9 @@ class PolariCanvas(Gtk.VBox):
 
     def _status_message(self, factory, message):
         self.chat_box.add_system_message(STATUS_CHANNEL, message)
+
+    def _topic_changed(self, factory, channel, topic):
+        self.chat_box.set_topic(channel, topic)
 
 
 if __name__ == "__main__":

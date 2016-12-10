@@ -18,7 +18,8 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-from consts import Color, NEW_CHANNEL_SCREEN_FONT
+from consts import Color, NEW_CHANNEL_SCREEN_FONT, DEFAULT_NICKNAME, \
+                   DEFAULT_SERVER, DEFAULT_PORT, DEFAULT_CHANNEL
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -85,28 +86,28 @@ class NewChannelScreen(Gtk.EventBox):
 
         self.form = Gtk.VBox()
 
-        self.nick = Field("Nick", nick or "Nickname")
+        self.nick = Field("Nick", nick or DEFAULT_NICKNAME)
         self.nick.entry.connect("changed", self.__text_changed)
         self.nick.entry.connect("activate", self.send_data)
 
         if not self.logged:
             self.form.pack_start(self.nick, False, False, 5)
 
-        self.server = Field("Server", host or "irc.freenode.net")
+        self.server = Field("Server", host or DEFAULT_SERVER)
         self.server.entry.connect("changed", self.__text_changed)
         self.server.entry.connect("activate", self.send_data)
 
         if not self.logged:
             self.form.pack_start(self.server, False, False, 5)
 
-        self.port = Field("Port", port or "6667")
+        self.port = Field("Port", port or DEFAULT_PORT)
         self.port.entry.connect("changed", self.__text_changed)
         self.port.entry.connect("activate", self.send_data)
 
         if not self.logged:
             self.form.pack_start(self.port, False, False, 5)
 
-        self.channels = Field("Channel", channel or "#sugar")
+        self.channels = Field("Channel", channel or DEFAULT_CHANNEL)
         self.channels.entry.connect("changed", self.__text_changed)
         self.channels.entry.connect("activate", self.send_data)
         self.form.pack_start(self.channels, False, False, 5)
@@ -130,8 +131,7 @@ class NewChannelScreen(Gtk.EventBox):
         if not self.logged:
             return bool(self.nick.get_value()) and \
                    bool(self.server.get_value()) and \
-                   bool(self.port.get_value()) and \
-                   self.port.get_value().isalnum()
+                   self.port.get_value().isdigit()
 
         else:
             return bool(self.channels.get_value())

@@ -61,6 +61,7 @@ class Client(irc.IRCClient, GObject.GObject):
         "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
         "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
         "status-message": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Message
+        "topic-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Topic
     }
 
     def start_gobject(self):
@@ -184,8 +185,11 @@ class Client(irc.IRCClient, GObject.GObject):
             line = "== " + line
             self.emit("status-message", line)
 
-    def topicUpdated(self, server, channel, topic):
-        "topic"
+    def topicUpdated(self, nickname, channel, topic):
+        self.emit("topic-changed", channel, topic)
+
+        if "." not in nickname:
+            self.emit("system-message", channel, "%s changed the topic of %s to: %s" % (nickname, channel, topic))
 
     def noticed(self, nickname, mynickname, message):
         self.emit("status-message", "== " + nickname.split("!")[0] + " " + message)
@@ -209,6 +213,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
         "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
         "status-message": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Message
+        "topic-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Topic
     }
 
     def __init__(self, channels):
@@ -235,6 +240,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         self.client.connect("nicknames-list", self._client_nicknames_list)
         self.client.connect("me-command", self._client_me_command)
         self.client.connect("status-message", self._client_status_message)
+        self.client.connect("topic-changed", self._client_topic_changed)
 
         return self.client
 
@@ -304,3 +310,6 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
     def _client_status_message(self, client, message):
         self.emit("status-message", message)
+
+    def _client_topic_changed(self, client, channel, topic):
+        self.emit("topic-changed", channel, topic)
