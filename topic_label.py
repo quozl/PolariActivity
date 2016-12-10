@@ -45,6 +45,7 @@ class TopicLabel(Gtk.EventBox):
 
         self.label = Gtk.Label(self.topic)
         self.label.props.xalign = 0
+        self.label.set_ellipsize(Pango.EllipsizeMode.END)
 
         self.entry = Gtk.Entry()
         self.entry.set_text(self.topic)
