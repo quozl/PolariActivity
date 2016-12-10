@@ -50,6 +50,9 @@ class Field(Gtk.HBox):
     def get_value(self):
         return self.entry.get_text()
 
+    def set_value(self, value):
+        self.entry.set_text(str(value))
+
 
 class AddChannelButton(Gtk.Button):
 

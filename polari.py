@@ -45,6 +45,7 @@ class PolariActivity(activity.Activity):
         self.set_canvas(self.polari)
 
         self.make_toolbar()
+        self.read_metadata()
         self.show_all()
 
     def make_toolbar(self):
@@ -77,6 +78,22 @@ class PolariActivity(activity.Activity):
         stop_button.connect("clicked", self._exit)
         stop_button.props.accelerator = "<Ctrl>Q"
         toolbar.insert(stop_button, -1)
+
+    def write_file(self, file_path):
+        screen = self.polari.channel_screen
+        self.metadata["nickname"] = screen.nick.get_value()
+        self.metadata["server"] = screen.server.get_value()
+        self.metadata["port"] = screen.port.get_value()
+        self.metadata["channel"] = screen.channels.get_value()
+
+    def read_metadata(self):
+        screen = self.polari.channel_screen
+
+        if "nickname" in self.metadata:
+            screen.nick.set_value(self.metadata["nickname"])
+            screen.server.set_value(self.metadata["server"])
+            screen.port.set_value(self.metadata["port"])
+            screen.channels.set_value(self.metadata["channel"])
 
     def _exit(self, *args):
         from twisted.internet import reactor
