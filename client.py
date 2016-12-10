@@ -20,6 +20,8 @@
 
 import random
 
+from consts import ALL_CHANNELS
+
 from twisted.internet.error import ReactorAlreadyInstalledError
 
 try:
@@ -95,7 +97,7 @@ class Client(irc.IRCClient, GObject.GObject):
 
     def irc_ERR_NICKNAMEINUSE(self, prefix, params):
         if params[0] != "*":
-            self.emit("system-message", "ALLCHANNELS", "Nickname is already in use: %s" % params[1])
+            self.emit("system-message", ALL_CHANNELS, "Nickname is already in use: %s" % params[1])
 
         else:
             self.nickname = get_random_nickname()
@@ -180,6 +182,15 @@ class Client(irc.IRCClient, GObject.GObject):
     def luserMe(self, info):
         self.emit("status-message", "== " + info)
 
+    def set_away(self, away, message):
+        if away:
+            self.away(message)
+            self.emit("system-message", ALL_CHANNELS, "You have been marked as being away")
+
+        else:
+            self.back()
+            self.emit("system-message", ALL_CHANNELS, "You are no longer marked as being away")
+
     def receivedMOTD(self, info):
         for line in info:
             line = "== " + line
@@ -260,14 +271,14 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
                 self.client.close_channel(channel)
 
     def clientConnectionLost(self, connector, reason):
-        self.emit("system-message", "ALLCHANNELS", "Connection lost: %s" % reason)
+        self.emit("system-message", ALL_CHANNELS, "Connection lost: %s" % reason)
         connector.connect()
 
     def clientConnectionFailed(self, connector, reason):
-        self.emit("system-message", "ALLCHANNELS", "Connection failed: %s" % reason)
+        self.emit("system-message", ALL_CHANNELS, "Connection failed: %s" % reason)
 
     def start_connection(self, host, port):
-        self.emit("system-message", "ALLCHANNELS", "Connecting to %s:%d" % (host, port))
+        self.emit("system-message", ALL_CHANNELS, "Connecting to %s:%d" % (host, port))
         reactor.connectTCP(host, port, self)
         reactor.run()
 

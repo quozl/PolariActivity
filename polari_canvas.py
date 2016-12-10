@@ -21,7 +21,7 @@
 from new_channel_screen import NewChannelScreen
 from channels_listbox import ChannelsListBox
 from chat_box import ChatBox
-from consts import Screen, STATUS_CHANNEL
+from consts import Screen, STATUS_CHANNEL, ALL_CHANNELS
 from client import ClientFactory
 
 import gi
@@ -153,15 +153,20 @@ class PolariCanvas(Gtk.VBox):
             self.change_nickname(parameters)
 
         elif command == "/names":
-            self.factory.protocol.ask_for_names(channel)
+            self.factory.client.ask_for_names(channel)
 
         elif command == "/me":
             self.factory.client.me(channel, parameters)
             self._me_command(None, channel, self.factory.client.get_nickname(), parameters)
 
         elif command == "/topic":
-            new_topic = parameters
-            self.change_topic(channel, new_topic)
+            self.change_topic(channel, parameters)
+
+        elif command == "/away":
+            self.factory.client.set_away(True, parameters)
+
+        elif command == "/back":
+            self.factory.client.set_away(False)
 
     def _log_in(self, widget, nick, host, channel, port):
         self.set_screen(Screen.CHAT)
@@ -218,7 +223,7 @@ class PolariCanvas(Gtk.VBox):
         self.channels_listbox.change_spinner(channel, False)
 
     def _system_message(self, factory, channel, message):
-        if channel == "ALLCHANNELS":
+        if channel == ALL_CHANNELS:
             for channel in self.chat_box.channels:
                 self.chat_box.add_system_message(channel, message)
 

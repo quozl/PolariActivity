@@ -48,11 +48,12 @@ ALERT_TITLE = _('You already have a session on this host with this channel and w
 ALERT_MSG = _('Automatically is selected session you try to create.')
 
 STATUS_CHANNEL = "status.polari"  # Users nicknames can't has a "."
+ALL_CHANNELS = "ALLCHANNELS"
 
 DEFAULT_NICKNAME = "Nickname"
 DEFAULT_SERVER = "irc.freenode.net"
 DEFAULT_PORT = "6667"
-DEFAULT_CHANNEL = "#sugar"
+DEFAULT_CHANNEL = "#cristian-test"  # "#sugar"
 
 
 class Screen:
