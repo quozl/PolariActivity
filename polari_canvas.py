@@ -23,6 +23,7 @@ from channels_listbox import ChannelsListBox
 from chat_box import ChatBox
 from consts import Screen, STATUS_CHANNEL, ALL_CHANNELS
 from client import ClientFactory
+from afk_manager import AFKManager
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -52,6 +53,10 @@ class PolariCanvas(Gtk.VBox):
         self.factory.connect("me-command", self._me_command)
         self.factory.connect("status-message", self._status_message)
         self.factory.connect("topic-changed", self._topic_changed)
+
+        self.afk_manager = AFKManager()
+        self.afk_manager.connect("user-afk", self._user_afk)
+        self.afk_manager.connect("user-back", self._user_back)
 
         self.channel_screen = NewChannelScreen()
         self.channel_screen.connect("log-in", self._log_in)
@@ -244,6 +249,8 @@ class PolariCanvas(Gtk.VBox):
         else:  # Direct message
             self.chat_box.message_recived(nickname, nickname, message)
 
+        self.afk_manager.start_counting(nickname, restart=True)
+
     def _nickname_changed(self, factory, nickname):
         self.chat_box.set_nickname(nickname)
 
@@ -261,10 +268,12 @@ class PolariCanvas(Gtk.VBox):
     def _user_joined(self, factory, channel, nickname):
         self.chat_box.add_system_message(channel, "%s joined." % nickname)
         self.chat_box.add_nickname(channel, nickname)
+        self.afk_manager.start_counting(nickname, restart=False)
 
     def _user_left(self, factory, channel, nickname):
         self.chat_box.add_system_message(channel, "%s has left." % nickname)
         self.chat_box.remove_nickname(channel, nickname)
+        self.afk_manager.remove_nickname(nickname)
 
     def _user_quit(self, factory, nickname, message):
         for channel in self.chat_box.channels:
@@ -273,9 +282,22 @@ class PolariCanvas(Gtk.VBox):
                 self.chat_box.add_system_message(channel, "%s has quit. [%s]" % (nickname, message))
 
         self.chat_box.remove_nickname_from_all_channels(nickname)
+        self.afk_manager.remove_nickname(nickname)
+
+    def _user_afk(self, manager, nickname):
+        self.chat_box.set_user_afk(nickname, True)
+
+    def _user_back(self, manager, nickname):
+        self.chat_box.set_user_afk(nickname, False)
 
     def _nicknames(self, factory, channel, nicknames):
-        self.chat_box.set_nicknames(channel, nicknames.split(" "))
+        self.set_nicknames(channel, nicknames.split(" "))
+
+    def set_nicknames(self, channel, nicknames):
+        self.chat_box.set_nicknames(channel, nicknames)
+
+        for nickname in nicknames:
+            self.afk_manager.start_counting(nickname, restart=False)
 
     def _me_command(self, factory, channel, nickname, message):
         self.chat_box.add_system_message(channel, " * %s %s" % (nickname, message))

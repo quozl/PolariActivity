@@ -18,12 +18,14 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
+import os
 from gettext import gettext as _
 
 import gi
 gi.require_version("Gdk", "3.0")
 
 from gi.repository import Gdk
+from gi.repository import GdkPixbuf
 
 SUGAR = None
 try:
@@ -38,6 +40,9 @@ if SUGAR:
     CHAT_FONT = "Monospace 14"
 else:
     CHAT_FONT = "Monospace 12"
+
+LOCAL_PATH = os.path.dirname(os.path.realpath(__file__))
+ICONS_DIR = os.path.join(LOCAL_PATH, "icons")
 
 NEW_CHANNEL_SCREEN_FONT = "20"
 
@@ -54,6 +59,11 @@ DEFAULT_NICKNAME = "Nickname"
 DEFAULT_SERVER = "irc.freenode.net"
 DEFAULT_PORT = "6667"
 DEFAULT_CHANNEL = "#sugar"
+
+ACTIVE_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "active.png"))
+AFK_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "afk.png"))
+
+AFK_COUNT = 900000  # 15 minutes on miliseconds
 
 
 class Screen:
@@ -99,3 +109,8 @@ class Key:
 class TopicLabelMode:
     SHOWING = 0
     EDITING = 1
+
+
+class UserState:
+    ACTIVE = "ACTIVE"
+    AFK = "AFK"

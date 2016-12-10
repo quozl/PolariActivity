@@ -314,3 +314,8 @@ class ChatBox(Gtk.VBox):
 
     def _change_topic(self, widget, topic):
         self.emit("change-topic", self.current_channel, topic)
+
+    def set_user_afk(self, nickname, afk):
+        for channel in self.nicks.keys():
+            if nickname in self.nicks[channel]:
+                self.nicks_listboxs[channel].set_afk(nickname, afk)

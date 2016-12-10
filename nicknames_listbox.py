@@ -18,7 +18,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-from consts import Color, SUGAR
+from consts import Color, SUGAR, ACTIVE_PIXBUF, AFK_PIXBUF, UserState
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -39,7 +39,7 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         Gtk.ScrolledWindow.__init__(self)
 
         self.nicknames = []
-        self.model = Gtk.ListStore(str)
+        self.model = Gtk.ListStore(str, str)  # State, Nickname
         self.selected_nickname = None
 
         self.set_size_request(150, 1)
@@ -51,8 +51,25 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         self.view.connect("button-press-event", self._button_press)
         self.add(self.view)
 
+        """
+        renderer = Gtk.CellRendererPixbuf()
+        column = Gtk.TreeViewColumn("State", renderer)
+        self.view.append_column(column)
+
         renderer = Gtk.CellRendererText()
-        column = Gtk.TreeViewColumn("Nickname", renderer, text=0)
+        column = Gtk.TreeViewColumn("Nickname", renderer)
+        self.view.append_column(column)
+        """
+
+        renderer = Gtk.CellRendererPixbuf()
+        column = Gtk.TreeViewColumn("")
+        column.pack_start(renderer, False)
+        column.set_cell_data_func(renderer, self.__get_tree_pixbuf)
+
+        renderer = Gtk.CellRendererText()
+        column.pack_start(renderer, False)
+        column.set_cell_data_func(renderer, self.__get_tree_text)
+
         self.view.append_column(column)
 
         self.menu = Gtk.Menu()
@@ -60,6 +77,18 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         item = Gtk.MenuItem("Query")
         item.connect("activate", self._query)
         self.menu.append(item)
+
+    def __get_tree_pixbuf(self, col, cell, model, iter, user_data):
+        state = self.model.get_value(iter, 0)
+
+        if state == UserState.ACTIVE:
+            cell.set_property("pixbuf", ACTIVE_PIXBUF)
+
+        elif state == UserState.AFK:
+            cell.set_property("pixbuf", AFK_PIXBUF)
+
+    def __get_tree_text(self, col, cell, model, iter, user_data):
+        cell.set_property("text", self.model.get_value(iter, 1))
 
     def set_list(self, nicknames):
         self.clear()
@@ -79,20 +108,29 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         self.nicknames.append(nickname)
         self.nicknames = sorted(self.nicknames, key=str.lower)
 
-        self.model.insert(self.nicknames.index(nickname), [nickname])
+        self.model.insert(self.nicknames.index(nickname), [UserState.ACTIVE, nickname])
         self.show_all()
 
     def remove_nickname(self, nickname):
         iter = self.model.get_iter_first()
-        if self.model.get_value(iter, 0) == nickname:
+        if self.model.get_value(iter, 1) == nickname:
             self.model.remove_iter(iter)
 
         else:
             while self.model.iter_next(iter):
                 iter = self.model.iter_next(iter)
-                if self.model.get_value(iter, 0) == nickname:
+                if self.model.get_value(iter, 1) == nickname:
                     self.model.remove(iter)
                     break
+
+    def set_afk(self, nickname, afk):
+        if nickname not in self.nicknames:
+            return
+
+        idx = self.nicknames.index(nickname)
+        iter = self.model.get_iter(idx)
+        state = UserState.ACTIVE if not afk else UserState.AFK
+        self.model.set_value(iter, 0, state)
 
     def _button_press(self, widget, event):
         row = self.view.get_dest_row_at_pos(event.x, event.y)
@@ -102,7 +140,7 @@ class NicknamesListBox(Gtk.ScrolledWindow):
 
         path = row[0]
         iter = self.model.get_iter(path)
-        self.selected_nickname = self.model.get_value(iter, 0)
+        self.selected_nickname = self.model.get_value(iter, 1)
 
         if event.button == 3:
             self.menu.show_all()
