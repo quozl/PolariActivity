@@ -197,6 +197,10 @@ class PolariCanvas(Gtk.VBox):
         if add_hash and not channel.startswith("#"):
             channel = "#" + channel
 
+        if channel in self.chat_box.channels:
+            self.chat_box.add_system_message(channel, "You've already joined %s" % channel)
+            return
+
         self.chat_box.add_channel(channel)
         self.channels_listbox.add_channel(channel, show=show)
         self.factory.add_channel(channel)
