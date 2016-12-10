@@ -144,8 +144,14 @@ class PolariCanvas(Gtk.VBox):
                 nickserv = parameters.split(" ")[0]
                 action = parameters.split(" ")[1].lower()
 
-                if action == "identify":
+                if action == "identify" and len(parameters.split(" ")) == 3:
                     password = parameters.split(" ")[2]
+                    self.send_message("NickServ", "identify %s" % password)
+
+                elif action == "identify" and len(parameters.split(" ")) == 4:
+                    nickname = parameters.split(" ")[2]
+                    password = parameters.split(" ")[3]
+                    self.change_nickname(nickname)
                     self.send_message("NickServ", "identify %s" % password)
 
         elif command == "/query":

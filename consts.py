@@ -63,7 +63,7 @@ DEFAULT_CHANNEL = "#sugar"
 ACTIVE_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "active.png"))
 AFK_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "afk.png"))
 
-AFK_COUNT = 900000  # 15 minutes on miliseconds
+AFK_COUNT = 2000 #900000  # 15 minutes on miliseconds
 
 
 class Screen:
