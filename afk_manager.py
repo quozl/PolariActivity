@@ -48,8 +48,9 @@ class AFKManager(GObject.GObject):
             self.timeout_ids[nickname] = id
 
     def remove_nickname(self, nickname):
-        self.stop_counting(nickname)
-        self.timeout_ids.pop(nickname)
+        if nickname in self.timeout_ids.keys():
+            self.stop_counting(nickname)
+            self.timeout_ids.pop(nickname)
 
     def _afk_cb(self, nickname):
         self.emit("user-afk", nickname)
