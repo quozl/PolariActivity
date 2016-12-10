@@ -48,6 +48,7 @@ class Client(irc.IRCClient, GObject.GObject):
     first_nickname = nickname
 
     __gsignals__ = {
+        "signed-on": (GObject.SIGNAL_RUN_FIRST, None, []),
         "joined": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
         "system-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Message
         "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # Channel, Nickname, Message
@@ -59,6 +60,7 @@ class Client(irc.IRCClient, GObject.GObject):
         "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, Message
         "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
         "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
+        "status-message": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Message
     }
 
     def start_gobject(self):
@@ -68,11 +70,14 @@ class Client(irc.IRCClient, GObject.GObject):
         self.__who_channel = None
 
     def signedOn(self):
+        self.emit("signed-on")
+        self.emit("status-message", "== Signed on!")
         for c in self.factory.channels:
             self.join(c)
 
     def joined(self, channel):
         self.emit("joined", channel)
+        self.emit("status-message", "== Joined: " + channel)
         self.who(channel)
 
     def privmsg(self, user, channel, msg):
@@ -162,12 +167,33 @@ class Client(irc.IRCClient, GObject.GObject):
     def me(self, channel, message):
         self.describe(channel, message)
 
+    def created(self, info):
+        self.emit("status-message", "== " + info)
+
+    def yourHost(self, info):
+        self.emit("status-message", "== " + info)
+
+    def luserClient(self, info):
+        self.emit("status-message", "== " + info)
+
+    def luserMe(self, info):
+        self.emit("status-message", "== " + info)
+
+    def receivedMOTD(self, info):
+        for line in info:
+            line = "== " + line
+            self.emit("status-message", line)
+
+    def topicUpdated(self, *args):
+        print args
+
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
     protocol = Client
 
     __gsignals__ = {
+        "signed-on": (GObject.SIGNAL_RUN_FIRST, None, []),
         "joined": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Channel
         "system-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Message
         "user-message": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]),  # Channel, Nickname, Message
@@ -179,6 +205,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         "user-kicked": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str, str]),  # Channel, Nickname, Kicker, Message
         "nicknames-list": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Nicknames list (splited by " ")
         "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
+        "status-message": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Message
     }
 
     def __init__(self, channels):
@@ -192,6 +219,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         self.client.factory = self
         self.client.start_gobject()
 
+        self.client.connect("signed-on", self._client_signed_on)
         self.client.connect("joined", self._client_joined)
         self.client.connect("system-message", self._client_system_message)
         self.client.connect("user-message", self._client_user_message)
@@ -203,6 +231,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         self.client.connect("user-kicked", self._client_kicked)
         self.client.connect("nicknames-list", self._client_nicknames_list)
         self.client.connect("me-command", self._client_me_command)
+        self.client.connect("status-message", self._client_status_message)
 
         return self.client
 
@@ -232,6 +261,9 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         self.emit("system-message", "ALLCHANNELS", "Connecting to %s:%d" % (host, port))
         reactor.connectTCP(host, port, self)
         reactor.run()
+
+    def _client_signed_on(self, client):
+        self.emit("signed-on")
 
     def _client_joined(self, client, channel):
         self.emit("joined", channel)
@@ -266,3 +298,6 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
     def _client_me_command(self, client, channel, nickname, message):
         self.emit("me-command", channel, nickname, message)
+
+    def _client_status_message(self, client, message):
+        self.emit("status-message", message)

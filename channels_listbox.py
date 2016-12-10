@@ -18,7 +18,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-from consts import Color, SUGAR
+from consts import Color, SUGAR, STATUS_CHANNEL
 
 import gi
 gi.require_version("Gtk", "3.0")
@@ -35,11 +35,12 @@ class ChannelItem(Gtk.EventBox):
         "removed": (GObject.SIGNAL_RUN_FIRST, None, []),
     }
 
-    def __init__(self, channel, show=None):
+    def __init__(self, channel, show=None, close_button=False):
         Gtk.EventBox.__init__(self)
 
         self.selected = False
         self.channel = channel
+        self.use_close_button = close_button
 
         self.set_size_request(1, 30)
         self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
@@ -100,7 +101,7 @@ class ChannelItem(Gtk.EventBox):
         if self.spinner.get_parent() == self.hbox:
             self.hbox.remove(self.spinner)
 
-        if self.button.get_parent() == None:
+        if self.button.get_parent() == None and self.use_close_button:
             self.hbox.pack_end(self.button, False, False, 0)
 
         self.show_all()
@@ -125,9 +126,14 @@ class ChannelsListBox(Gtk.ScrolledWindow):
             self.modify_bg(Gtk.StateType.NORMAL, Color.WHITE)
 
         self.add(self.vbox)
+        self.add_status_tab()
+        self.show_all()
 
-    def add_channel(self, channel, show=None):
-        item = ChannelItem(channel, show=None)
+    def add_status_tab(self):
+        self.add_channel(STATUS_CHANNEL, show="Status", close_button=False)
+
+    def add_channel(self, channel, show=None, close_button=True):
+        item = ChannelItem(channel, show=show, close_button=close_button)
         item.connect("selected", self.select_item)
         item.connect("removed", self.remove_item)
         self.vbox.pack_start(item, False, False, 0)

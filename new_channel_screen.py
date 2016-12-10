@@ -106,7 +106,7 @@ class NewChannelScreen(Gtk.EventBox):
         if not self.logged:
             self.form.pack_start(self.port, False, False, 5)
 
-        self.channels = Field("Channel", channel or "#sugar")
+        self.channels = Field("Channel", channel or "")
         self.channels.entry.connect("changed", self.__text_changed)
         self.channels.entry.connect("activate", self.send_data)
         self.form.pack_start(self.channels, False, False, 5)
@@ -130,7 +130,6 @@ class NewChannelScreen(Gtk.EventBox):
         if not self.logged:
             return bool(self.nick.get_value()) and \
                    bool(self.server.get_value()) and \
-                   bool(self.channels.get_value()) and \
                    bool(self.port.get_value()) and \
                    self.port.get_value().isalnum()
 

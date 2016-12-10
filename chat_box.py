@@ -21,7 +21,7 @@
 from gettext import gettext as _
 
 from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, CHAT_FONT, Color, \
-                   Key
+                   Key, STATUS_CHANNEL
 
 from utils import get_urls, beep
 from nicknames_listbox import NicknamesListBox
@@ -93,6 +93,8 @@ class ChatBox(Gtk.VBox):
         hbox.pack_start(self.entry, True, True, 0)
 
         self.set_entries_theme()
+        self.add_status_tab()
+        self.switch_channel(STATUS_CHANNEL)
 
     def __key_press_cb(self, widget, event):
         if event.keyval == Key.TAB and self.entry.has_focus():
@@ -111,6 +113,9 @@ class ChatBox(Gtk.VBox):
     def _change_nickname(self, widget):
         self.emit("change-nickname", self.nicker.get_text())
         self.nicker.set_text("")
+
+    def add_status_tab(self):
+        self.add_channel(STATUS_CHANNEL)
 
     def add_channel(self, channel):
         if channel not in self.channels:

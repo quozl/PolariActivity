@@ -47,6 +47,8 @@ CONNECTION_ERROR = _('Error to connecting to the server... closing the socket.')
 ALERT_TITLE = _('You already have a session on this host with this channel and whit this nickname.')
 ALERT_MSG = _('Automatically is selected session you try to create.')
 
+STATUS_CHANNEL = "status status status"
+
 
 class Screen:
     CHAT = 0
