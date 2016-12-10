@@ -120,7 +120,10 @@ class PolariCanvas(Gtk.VBox):
             if parameters.split(" ")[0].lower() != "nickserv":
                 nickname = parameters.split(" ")[0]
                 message = parameters[len(nickname) + 1:]
-                self.new_channel(nickname, add_hash=False)
+
+                if nickname not in self.chat_box.channels:
+                    self.new_channel(nickname, add_hash=False)
+
                 self.send_message(nickname, message)
                 self.chat_box.add_message_to_view(nickname, self.factory.client.get_nickname(), message, force=True)
 
