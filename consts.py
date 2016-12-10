@@ -54,14 +54,16 @@ ALERT_MSG = _('Automatically is selected session you try to create.')
 
 STATUS_CHANNEL = "status.polari"  # Users nicknames can't has a "."
 ALL_CHANNELS = "ALLCHANNELS"
+CURRENT_CHANNEL = "CURRENT_CHANNEL"
 
 DEFAULT_NICKNAME = "Nickname"
 DEFAULT_SERVER = "irc.freenode.net"
 DEFAULT_PORT = "6667"
-DEFAULT_CHANNEL = "#sugar"
+DEFAULT_CHANNEL = "#nottest" #  "#sugar"
 
-ACTIVE_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "active.png"))
-AFK_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "afk.png"))
+ADMIN_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "admin.png"))
+MODERATOR_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "moderator.png"))
+NORMAL_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "normal.png"))
 
 AFK_COUNT = 2000 #900000  # 15 minutes on miliseconds
 
@@ -114,3 +116,9 @@ class TopicLabelMode:
 class UserState:
     ACTIVE = "ACTIVE"
     AFK = "AFK"
+
+
+class UserType:
+    ADMIN = "ADMIN"
+    MODERATOR = "MODERATOR"
+    NORMAL = "NORMAL"

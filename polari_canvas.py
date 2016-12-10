@@ -21,7 +21,7 @@
 from new_channel_screen import NewChannelScreen
 from channels_listbox import ChannelsListBox
 from chat_box import ChatBox
-from consts import Screen, STATUS_CHANNEL, ALL_CHANNELS
+from consts import Screen, STATUS_CHANNEL, ALL_CHANNELS, CURRENT_CHANNEL, UserType
 from client import ClientFactory
 from afk_manager import AFKManager
 
@@ -53,6 +53,7 @@ class PolariCanvas(Gtk.VBox):
         self.factory.connect("me-command", self._me_command)
         self.factory.connect("status-message", self._status_message)
         self.factory.connect("topic-changed", self._topic_changed)
+        self.factory.connect("mode-changed", self._mode_changed)
 
         self.afk_manager = AFKManager()
         self.afk_manager.connect("user-afk", self._user_afk)
@@ -303,6 +304,9 @@ class PolariCanvas(Gtk.VBox):
         self.chat_box.set_nicknames(channel, nicknames)
 
         for nickname in nicknames:
+            if "@" in nickname:
+                nickname, usertype = nickname.split("@")
+
             self.afk_manager.start_counting(nickname, restart=False)
 
     def _me_command(self, factory, channel, nickname, message):
@@ -313,6 +317,12 @@ class PolariCanvas(Gtk.VBox):
 
     def _topic_changed(self, factory, channel, topic):
         self.chat_box.set_topic(channel, topic)
+
+    def _mode_changed(self, factory, channel, usertype, nickname):
+        if channel == CURRENT_CHANNEL:
+            channel = self.chat_box.current_channel
+
+        self.chat_box.set_user_mode(channel, usertype, nickname)
 
 
 if __name__ == "__main__":

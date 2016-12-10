@@ -55,3 +55,15 @@ def parse_irc(msg, server):
 
 def beep():
     print "\a"
+
+
+def remove_usertypes(nicknames):
+    newnicks = []
+    for x in range(0, len(nicknames)):
+        if "@" in nicknames[x]:
+            newnicks.append(nicknames[x].split("@")[0])
+
+        else:
+            newnicks.append(nicknames[x])
+
+    return newnicks

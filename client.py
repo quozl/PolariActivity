@@ -20,7 +20,7 @@
 
 import random
 
-from consts import ALL_CHANNELS
+from consts import ALL_CHANNELS, CURRENT_CHANNEL, UserType
 
 from twisted.internet.error import ReactorAlreadyInstalledError
 
@@ -64,6 +64,7 @@ class Client(irc.IRCClient, GObject.GObject):
         "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
         "status-message": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Message
         "topic-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Topic
+        "mode-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str])  # Channel, UserType, Nickname
     }
 
     def start_gobject(self):
@@ -136,7 +137,17 @@ class Client(irc.IRCClient, GObject.GObject):
         self.sendLine("WHO %s" % channel)
 
     def irc_RPL_WHOREPLY(self, *nargs):
-        self.__who_reply.append(nargs[1][5])
+        usertype = UserType.NORMAL
+        if nargs[1][6] == "H":
+            usertype = UserType.NORMAL
+
+        elif nargs[1][6] == "H+":
+            usertype = UserType.MODERATOR
+
+        elif nargs[1][6] == "H@":
+            usertype = UserType.ADMIN
+
+        self.__who_reply.append(nargs[1][5] + "@" + usertype)
  
     def irc_RPL_ENDOFWHO(self, *nargs):
         nicknames = ""
@@ -205,6 +216,32 @@ class Client(irc.IRCClient, GObject.GObject):
     def noticed(self, nickname, mynickname, message):
         self.emit("status-message", "== " + nickname.split("!")[0] + " " + message)
 
+    def modeChanged(self, user, channel, set, modes, args):
+        usertype = UserType.NORMAL
+        changer = user.split("!")[0]
+
+        if set:
+            if modes == "o":
+                usertype = UserType.ADMIN
+
+            elif modes == "v":
+                usertype = UserType.MODERATOR
+
+            elif modes == "i":
+                usertype = UserType.NORMAL
+
+        else:
+            usertype = UserType.NORMAL
+
+        if user == channel:
+            channel = CURRENT_CHANNEL
+
+        else:
+            message = "%s puts mode %s%s to %s" % (changer, "+" if set else "-", modes, args[0])
+            self.emit("system-message", channel, message)
+
+        self.emit("mode-changed", channel, usertype, args[0])
+
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
@@ -225,6 +262,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         "me-command": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str]), # Channel, Nickname, Message
         "status-message": (GObject.SIGNAL_RUN_FIRST, None, [str]),  # Message
         "topic-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str]),  # Channel, Topic
+        "mode-changed": (GObject.SIGNAL_RUN_FIRST, None, [str, str, str])  # Channel, UserType, Nickname
     }
 
     def __init__(self, channels):
@@ -252,6 +290,7 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
         self.client.connect("me-command", self._client_me_command)
         self.client.connect("status-message", self._client_status_message)
         self.client.connect("topic-changed", self._client_topic_changed)
+        self.client.connect("mode-changed", self._client_mode_changed)
 
         return self.client
 
@@ -324,3 +363,6 @@ class ClientFactory(protocol.ClientFactory, GObject.GObject):
 
     def _client_topic_changed(self, client, channel, topic):
         self.emit("topic-changed", channel, topic)
+
+    def _client_mode_changed(self, client, channel, usertype, nickname):
+        self.emit("mode-changed", channel, usertype, nickname)

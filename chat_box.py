@@ -23,7 +23,7 @@ from gettext import gettext as _
 from consts import CONNECTION_ERROR, NICKNAME_USED, SUGAR, CHAT_FONT, Color, \
                    Key, STATUS_CHANNEL
 
-from utils import get_urls, beep
+from utils import get_urls, beep, remove_usertypes
 from nicknames_listbox import NicknamesListBox
 from topic_label import TopicLabel
 
@@ -288,8 +288,8 @@ class ChatBox(Gtk.VBox):
 
     def set_nicknames(self, channel, nicknames):
         if channel in self.channels:  # twisted factory add a hash to nicks too
-            self.nicks[channel] = nicknames
             self.nicks_listboxs[channel].set_list(nicknames)
+            self.nicks[channel] = remove_usertypes(nicknames)
 
     def add_nickname(self, channel, nickname):
         self.nicks[channel].append(nickname)
@@ -319,3 +319,6 @@ class ChatBox(Gtk.VBox):
         for channel in self.nicks.keys():
             if nickname in self.nicks[channel]:
                 self.nicks_listboxs[channel].set_afk(nickname, afk)
+
+    def set_user_mode(self, channel, usertype, nickname):
+        self.nicks_listboxs[channel].set_user_type(nickname, usertype)
