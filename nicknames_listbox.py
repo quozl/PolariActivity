@@ -47,8 +47,8 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         self.view = Gtk.TreeView()
         self.view.set_model(self.model)
         self.view.set_headers_visible(False)
-        self.view.add_events(Gdk.EventMask.BUTTON_RELEASE_MASK)
-        self.view.connect("button-release-event", self._button_release)
+        self.view.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.view.connect("button-press-event", self._button_press)
         self.add(self.view)
 
         renderer = Gtk.CellRendererText()
@@ -94,9 +94,9 @@ class NicknamesListBox(Gtk.ScrolledWindow):
                     self.model.remove(iter)
                     break
 
-    def _button_release(self, widget, event):
+    def _button_press(self, widget, event):
         row = self.view.get_dest_row_at_pos(event.x, event.y)
-        if row == None or event.button != 3:
+        if row == None:
             self.selected_nickname = None
             return False
 
@@ -104,8 +104,12 @@ class NicknamesListBox(Gtk.ScrolledWindow):
         iter = self.model.get_iter(path)
         self.selected_nickname = self.model.get_value(iter, 0)
 
-        self.menu.show_all()
-        self.menu.popup(None, None, None, None, event.button, event.time)
+        if event.button == 3:
+            self.menu.show_all()
+            self.menu.popup(None, None, None, None, event.button, event.time)
+
+        elif event.button == 1 and event.type == Gdk.EventType.DOUBLE_BUTTON_PRESS:
+            self.emit("query", self.selected_nickname)
 
     def _query(self, item):
         if self.selected_nickname != None:
