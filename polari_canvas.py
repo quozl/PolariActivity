@@ -135,6 +135,12 @@ class PolariCanvas(Gtk.VBox):
                     password = parameters.split(" ")[2]
                     self.send_message("NickServ", "identify %s" % password)
 
+        elif command == "/query":
+            nickname = parameters.split(" ")[0]
+
+            if nickname not in self.chat_box.channels:
+                self.new_channel(nickname, add_hash=False)
+
         elif command == "/nick":
             self.change_nickname(parameters)
 
