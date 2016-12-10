@@ -117,11 +117,20 @@ class PolariCanvas(Gtk.VBox):
                     self.new_channel(channel)
 
         elif command == "/msg":
-            nickname = parameters.split(" ")[0]
-            message = parameters[len(nickname) + 1:]
-            self.new_channel(nickname, add_hash=False)
-            self.send_message(nickname, message)
-            self.chat_box.add_message_to_view(nickname, self.factory.client.get_nickname(), message, force=True)
+            if parameters.split(" ")[0].lower() != "nickserv":
+                nickname = parameters.split(" ")[0]
+                message = parameters[len(nickname) + 1:]
+                self.new_channel(nickname, add_hash=False)
+                self.send_message(nickname, message)
+                self.chat_box.add_message_to_view(nickname, self.factory.client.get_nickname(), message, force=True)
+
+            else:
+                nickserv = parameters.split(" ")[0]
+                action = parameters.split(" ")[1].lower()
+
+                if action == "identify":
+                    password = parameters.split(" ")[2]
+                    self.send_message("NickServ", "identify %s" % password)
 
         elif command == "/nick":
             self.change_nickname(parameters)

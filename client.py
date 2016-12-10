@@ -184,8 +184,11 @@ class Client(irc.IRCClient, GObject.GObject):
             line = "== " + line
             self.emit("status-message", line)
 
-    def topicUpdated(self, *args):
-        print args
+    def topicUpdated(self, server, channel, topic):
+        "topic"
+
+    def noticed(self, nickname, mynickname, message):
+        self.emit("status-message", "== " + nickname.split("!")[0] + " " + message)
 
 
 class ClientFactory(protocol.ClientFactory, GObject.GObject):
