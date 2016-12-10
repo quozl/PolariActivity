@@ -36,7 +36,7 @@ class AFKManager(GObject.GObject):
 
     def stop_counting(self, nickname):
         if nickname in self.timeout_ids.keys() and self.timeout_ids[nickname] != None:
-            GObject.source_remove(self.timeout_ids[nickname], nickname)
+            GObject.source_remove(self.timeout_ids[nickname])
 
     def start_counting(self, nickname, restart=True):
         if not nickname in self.timeout_ids.keys() or restart:
