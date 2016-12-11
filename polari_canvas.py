@@ -152,8 +152,7 @@ class PolariCanvas(Gtk.VBox):
                 elif action == "identify" and len(parameters.split(" ")) == 4:
                     nickname = parameters.split(" ")[2]
                     password = parameters.split(" ")[3]
-                    self.change_nickname(nickname)
-                    self.send_message("NickServ", "identify %s" % password)
+                    self.send_message("NickServ", "identify %s %s" % (nickname, password))
 
         elif command == "/query":
             nickname = parameters.split(" ")[0]
@@ -239,6 +238,9 @@ class PolariCanvas(Gtk.VBox):
         self.channels_listbox.change_spinner(channel, False)
 
     def _system_message(self, factory, channel, message):
+        if channel == CURRENT_CHANNEL:
+            channel = self.chat_box.current_channel
+
         if channel == ALL_CHANNELS:
             for channel in self.chat_box.channels:
                 self.chat_box.add_system_message(channel, message)

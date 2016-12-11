@@ -216,6 +216,11 @@ class Client(irc.IRCClient, GObject.GObject):
     def noticed(self, nickname, mynickname, message):
         self.emit("status-message", "== " + nickname.split("!")[0] + " " + message)
 
+        if "You are now identified for" in message:
+            new_nick = message.split(" ")[-1][1:-2]
+            self.emit("nickname-changed", new_nick)
+            self.emit("system-message", CURRENT_CHANNEL, "You are now identified for %s" % new_nick)
+
     def modeChanged(self, user, channel, set, modes, args):
         usertype = UserType.NORMAL
         changer = user.split("!")[0]
