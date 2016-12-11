@@ -242,8 +242,9 @@ class Client(irc.IRCClient, GObject.GObject):
             channel = CURRENT_CHANNEL
 
         else:
-            message = "%s puts mode %s%s to %s" % (changer, "+" if set else "-", modes, args[0])
-            self.emit("system-message", channel, message)
+            if args[0] != None:
+                message = "%s puts mode %s%s to %s" % (changer, "+" if set else "-", modes, args[0])
+                self.emit("system-message", channel, message)
 
         self.emit("mode-changed", channel, usertype, args[0])
 

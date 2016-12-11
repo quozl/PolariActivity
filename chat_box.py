@@ -202,6 +202,9 @@ class ChatBox(Gtk.VBox):
         self.entry.set_text("")
 
     def add_text_with_tag(self, channel, text, tag):
+        if not channel in self.channels and channel[1:] in self.channels:
+            channel = channel[1:]
+
         end = self.buffers[channel].get_end_iter()
         self.buffers[channel].insert_with_tags_by_name(end, text, tag)
 
@@ -321,4 +324,5 @@ class ChatBox(Gtk.VBox):
                 self.nicks_listboxs[channel].set_afk(nickname, afk)
 
     def set_user_mode(self, channel, usertype, nickname):
-        self.nicks_listboxs[channel].set_user_type(nickname, usertype)
+        if channel in self.channels:  # Nicknames aren't channels (/query nickname)
+            self.nicks_listboxs[channel].set_user_type(nickname, usertype)
