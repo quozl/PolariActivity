@@ -59,13 +59,13 @@ CURRENT_CHANNEL = "CURRENT_CHANNEL"
 DEFAULT_NICKNAME = "Nickname"
 DEFAULT_SERVER = "irc.freenode.net"
 DEFAULT_PORT = "6667"
-DEFAULT_CHANNEL = "#nottest" #  "#sugar"
+DEFAULT_CHANNEL = "#sugar"
 
 ADMIN_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "admin.png"))
 MODERATOR_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "moderator.png"))
 NORMAL_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(os.path.join(ICONS_DIR, "normal.png"))
 
-AFK_COUNT = 2000 #900000  # 15 minutes on miliseconds
+AFK_COUNT = 900000  # 15 minutes on miliseconds
 
 
 class Screen:
