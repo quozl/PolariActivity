@@ -136,18 +136,18 @@ class Client(irc.IRCClient, GObject.GObject):
         self.__who_channel = channel
         self.sendLine("WHO %s" % channel)
 
-    def irc_RPL_WHOREPLY(self, *nargs):
+    def irc_RPL_WHOREPLY(self, server, data):
         usertype = UserType.NORMAL
-        if nargs[1][6] == "H":
+        if data[6] == "H":
             usertype = UserType.NORMAL
 
-        elif nargs[1][6] == "H+":
+        elif data[6] == "H+":
             usertype = UserType.MODERATOR
 
-        elif nargs[1][6] == "H@":
+        elif data[6] == "H@":
             usertype = UserType.ADMIN
 
-        self.__who_reply.append(nargs[1][5] + "@" + usertype)
+        self.__who_reply.append(data[5] + "@" + usertype)
  
     def irc_RPL_ENDOFWHO(self, *nargs):
         nicknames = ""
@@ -193,7 +193,7 @@ class Client(irc.IRCClient, GObject.GObject):
     def luserMe(self, info):
         self.emit("status-message", "== " + info)
 
-    def set_away(self, away, message):
+    def set_away(self, away, message=""):
         if away:
             self.away(message)
             self.emit("system-message", ALL_CHANNELS, "You have been marked as being away")
