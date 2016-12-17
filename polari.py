@@ -18,23 +18,22 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import globals as G
 from gettext import gettext as _
 
+from consts import Screen
+
+import gi
+gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 from sugar3.activity import activity
 from sugar3.graphics.alert import TimeoutAlert
 from sugar3.graphics.toolbutton import ToolButton
 from sugar3.graphics.toolbarbox import ToolbarBox
-from sugar3.activity.widgets import _create_activity_icon as ActivityIcon
+from sugar3.activity.widgets import StopButton
+from sugar3.activity.widgets import ActivityToolbarButton
 
-from widgets import AddChannelBox
-from widgets import ChannelsView
-from widgets import ChatView
-from widgets import Canvas
-
-from client import Client
+from polari_canvas import PolariCanvas
 
 
 class PolariActivity(activity.Activity):
@@ -42,196 +41,70 @@ class PolariActivity(activity.Activity):
     def __init__(self, handle):
         activity.Activity.__init__(self, handle)
 
-        self.max_characters = 4096
-        self.rooms = {}
-        self.actual_room = None
+        self.polari = PolariCanvas()
+        self.set_canvas(self.polari)
 
-        self.vbox = Gtk.VBox()
-        self.viewer = Canvas()
-        self._channels_view = self.viewer.channels_box
-
-        self.set_size_request(500, 300)
         self.make_toolbar()
-
-        self._channels_view.connect('channel-selected', self.channel_changed)
-        self._channels_view.connect('channel-removed', self.remove_channel)
-        self.viewer.pack_start(self._channels_view, False, False, 1)
-
-        self.vbox.pack_end(self.viewer, True, True, 0)
-        self.set_canvas(self.vbox)
+        self.read_metadata()
         self.show_all()
 
-        self.add_channel(init=True)
-
-    def remove_channel(self, widget, name):
-        room = self.rooms[name]
-        room['client'].close()
-        self.viewer.remove(room['chat-view'])
-        room['chat-view'].destroy()
-
-        _dict = {}
-
-        for room, values in self.rooms.items():
-            # Removing a key of the dictionaty
-            if room != name:
-                _dict[room] = values
-
-        self.rooms = _dict
-
-        if not self.rooms:
-            self.actual_room = None
-            self.add_channel(init=True)
-
-    def channel_changed(self, widget, name):
-        self.actual_room = name
-        self.set_chat_view(self.rooms[self.actual_room]['chat-view'])
-
     def make_toolbar(self):
-        def make_separator(expand=False, size=0):
+        def make_separator(expand=False):
             separator = Gtk.SeparatorToolItem()
-            separator.set_size_request(size, -1)
             if expand:
                 separator.set_expand(True)
-
-            if expand or size:
                 separator.props.draw = False
 
             return separator
 
         toolbar_box = ToolbarBox()
-        toolbar = toolbar_box.toolbar
-        activity_button = ToolButton()
-        button_add = ToolButton(Gtk.STOCK_ADD)
-        self.entry_nick = Gtk.Entry()
-        stop_button = ToolButton('activity-stop')
-
-        activity_button.set_icon_widget(ActivityIcon(None))
-        button_add.set_tooltip(_('Add channel'))
-        stop_button.connect('clicked', self._exit)
-        stop_button.props.accelerator = '<Ctrl>Q'
-
-        button_add.connect('clicked', self.add_channel)
-
-        toolbar.insert(activity_button, -1)
-        toolbar.insert(make_separator(size=30), -1)
-        toolbar.insert(button_add, -1)
-        toolbar.insert(make_separator(expand=True), -1)
-        toolbar.insert(stop_button, -1)
         self.set_toolbar_box(toolbar_box)
 
-    def set_nickname(self, chat_view, nickname, room):
-        if room['client'].connected:
-            room['client'].set_nickname(nickname)
+        toolbar = toolbar_box.toolbar
 
-        else:
-            room['client'].nickname = nickname
+        activity_button = ActivityToolbarButton(self)
+        toolbar.insert(activity_button, -1)
 
-    def add_channel(self, widget=None, init=False):
-        if self.actual_room:
-            nick = self.rooms[self.actual_room]['nickname']
-            host = self.rooms[self.actual_room]['host']
-            channel = self.rooms[self.actual_room]['channel']
-            port = self.rooms[self.actual_room]['port']
+        toolbar.insert(make_separator(), -1)
 
-        else:
-            nick = None
-            host = None
-            channel = None
-            port = None
+        button_add = ToolButton(Gtk.STOCK_ADD)
+        button_add.set_tooltip(_("Add a channel"))
+        button_add.connect("clicked", self._add_channel)
+        toolbar.insert(button_add, -1)
 
-        box = AddChannelBox(nick, host, channel, port, init)
+        toolbar.insert(make_separator(True), -1)
 
-        box.connect('new-channel', self.new_channel)
-        box.connect('new-channel', self.viewer.set_originals_boxes)
-        box.connect('cancel', self.viewer.set_originals_boxes)
+        stop_button = ToolButton("activity-stop")
+        stop_button.connect("clicked", self._exit)
+        stop_button.props.accelerator = "<Ctrl>Q"
+        toolbar.insert(stop_button, -1)
 
-        self.viewer.set_canvas(box)
-        self.show_all()
+    def write_file(self, file_path):
+        screen = self.polari.channel_screen
+        self.metadata["nickname"] = screen.nick.get_value()
+        self.metadata["server"] = screen.server.get_value()
+        self.metadata["port"] = screen.port.get_value()
+        self.metadata["channel"] = screen.channels.get_value()
 
-    def new_channel(self, widget, nick, host, channel, port):
-        name = host + '@' + channel + ':' + nick
-        if name in self.rooms:
-            self._channels_view.select_item_from_string(name)
-            alert = TimeoutAlert(10)
-            alert.props.title = G.ALERT_TITLE
-            alert.props.msg = G.ALERT_MSG
+    def read_metadata(self):
+        screen = self.polari.channel_screen
 
-            hbox = alert.get_children()[0]
-            buttonbox = hbox.get_children()[1]
-            button = buttonbox.get_children()[0]
-            buttonbox.remove(button)
-
-            alert.connect('response', self.__response)
-            self.vbox.pack_start(alert, False, False, 0)
-
-        else:
-            self.create_new_room(host, channel, nick, port)
-
-        self.show_all()
-
-    def __response(self, alert, *args):
-        self.vbox.remove(alert)
-
-    def create_new_room(self, host, channel, nick, port):
-        if channel.startswith('#'):
-            channel = channel[1:]
-
-        room = {}
-        room['host'] = host
-        room['channel'] = channel
-        room['nickname'] = nick
-        room['port'] = port
-        room['chat-view'] = ChatView()
-        room['max-characters'] = self.max_characters
-        room['entry-speak'] = room['chat-view'].entry
-        room['entry-nick'] = room['chat-view'].nicker
-        room['client'] = Client(room)
-        room['client'].entry = room['entry-speak']
-        room['client'].nicker = room['entry-nick']
-
-        self.actual_room = host + '@' + channel + ':' + nick
-        self.rooms[self.actual_room] = room
-
-        room['chat-view'].connect('stop-widget', self._stop_last_item_child, room)
-        room['chat-view'].connect('nickname-changed', self.set_nickname, room)
-        room['entry-speak'].connect('activate', self.send_message, room)
-        room['client'].connect('connected', self.client_connected)
-        room['client'].connect('connected', self._stop_last_item_child, room)
-
-        room['chat-view'].set_user(room['nickname'])
-        room['chat-view'].set_client(room['client'])
-        self.set_chat_view(room['chat-view'])
-
-        self._channels_view.add_channel(host, channel, nick)
-
-    def _stop_last_item_child(self, client, room):
-        section = room['host'] + '@' + room['channel']
-        name = section + ':' + room['nickname']
-        nickname = room['nickname']
-        vbox = self._channels_view.sections[section]
-
-        for item in vbox:
-            if isinstance(item, Gtk.Label):  # It's label show the host
-                continue
-
-            if item.name == name and item.nickname == nickname:
-                item.stop_spinner()
-                break
-
-    def client_connected(self, client):
-        client.entry.set_sensitive(True)
-        client.nicker.set_sensitive(True)
-
-    def set_chat_view(self, view):
-        self.viewer.set_chat_view(view)
-        self.show_all()
-
-    def send_message(self, widget, room):
-        room['client'].say(widget.get_text())
+        if "nickname" in self.metadata:
+            screen.nick.set_value(self.metadata["nickname"])
+            screen.server.set_value(self.metadata["server"])
+            screen.port.set_value(self.metadata["port"])
+            screen.channels.set_value(self.metadata["channel"])
 
     def _exit(self, *args):
-        for room in self.rooms:
-            client = self.rooms[room]['client']
-            client.close()
+        from twisted.internet import reactor
+        from twisted.internet.error import ReactorNotRunning
+
+        try:
+            reactor.stop()
+        except ReactorNotRunning:
+            pass
 
         self.close()
+
+    def _add_channel(self, button):
+        self.polari.set_screen(Screen.NEW_CHANNEL)
